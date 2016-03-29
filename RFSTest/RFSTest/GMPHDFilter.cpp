@@ -1,0 +1,105 @@
+#include "GMPHDFilter.h"
+#include "MathHelpers.h"
+
+/**
+ * <summary> Standard constructor of the GMPHDFilter. </summary>
+ *
+ * <param name = "_kf"> An instance of the Kalman Filter for single target state propagation. </param>
+ * <param name = "_nBirthComponents"> Number of birth components for the Gaussian Mixture during the prediction step. </param>
+ * <param name = "_birthIntensity"> Intensity of the birth components. </param>
+ * <param name = "_pS"> Probability of target survival. </param>
+ * <param name = "_iCov"> Initial target state uncertainty (covariance). </param>
+ * <param name = "_lBound"> Lower state bound for random state generation. </param>
+ * <param name = "_uBound"> Upper state bound for random state generation. </param>
+ */
+GMPHDFilter::GMPHDFilter(const KalmanFilter & _kf, const unsigned int & _nBirthComponents, const double & _birthIntensity,
+	const double & _pS, const MatrixXd& _iCov, const VectorXd & _lBound, const VectorXd & _uBound) : kf(_kf), nBirthComponents(_nBirthComponents),
+	birthIntensity(_birthIntensity), pS(_pS), initialCovariance(_iCov), lowerBound(_lBound), upperBound(_uBound) {}
+
+/**
+ * <summary> Prediction step of the GM PHD filter. </summary>
+ * <param name = "_gmm"> A reference to the Gaussian Mixture to be precited. </param>
+ */
+void GMPHDFilter::predict(gaussian_mixture & _gmm)
+{
+	// Prediction for all of the components
+	for (auto &gc : _gmm.components) {
+		kf.predict(gc);
+		gc.w *= pS;
+	}
+
+	// New target birth
+	double initialWeight = birthIntensity / nBirthComponents;
+	for (size_t i = 0; (i < nBirthComponents) && (_gmm.size() < _gmm.nMax); i++)
+		_gmm.addComponent(gaussian_mixture::randVec(lowerBound, upperBound), initialCovariance, initialWeight);
+}
+
+/**
+ * <summary> Update step of the GM PHD Filter. </summary>
+ * <param name = "_sensor"> A reference to the sensor to read the measurements from. </sensor>
+ */
+void GMPHDFilter::update(gaussian_mixture& _gmm, Sensor & _sensor)
+{
+	auto pD = _sensor.getPD();
+	size_t n0 = _gmm.size();
+
+	// [2] Compute second term first, avoiding temporary variables
+	// Per measurement
+	for (size_t i = 0; i < _sensor.z.size(); i++) {
+
+		double weightSum = 0.0;
+		size_t n = _gmm.size();
+		
+		// Perform updates to the predicted set
+		for (size_t j = 0; j < n0; j++) {
+
+			gaussian_component gct(_gmm[j]);
+			kf.update(gct, _sensor, i);
+
+			// GMPHD paper, formula 20, likelihood (???)
+			auto q = (1 / sqrt(pow(2 * M_PI, _sensor.getZDim()) * _sensor.getS().determinant())) * exp(-0.5 * _sensor.zMahalanobis(gct.m,i));
+			gct.w *= pD * q;
+			weightSum += gct.w;
+
+			if (gct.w > 1e-7) 
+				_gmm.addComponent(gct);
+		}
+
+		// Weight normalization
+		for (size_t j = n; j < _gmm.size(); j++) 
+			_gmm[j].w /= weightSum + _sensor.kappa;
+	}
+
+	// [1] Compute first term (Predicted mixture x (1 - pD))
+	for (size_t i = 0; i < n0; i++)
+		_gmm[i].w *= (1 - pD);
+
+	// If the track got split, the component with the highest weight keeps the track
+	for (size_t i = 0; i < _gmm.components.size(); i++)
+		for (size_t j = 0; j < _gmm.components.size(); j++)
+			if (_gmm.components[i].tag[0] == _gmm.components[j].tag[0] && i != j)
+				if (_gmm.components[i].w > _gmm.components[j].w)
+					_gmm.components[j].initTag(_gmm.idCounter++);
+				else
+					_gmm.components[i].initTag(_gmm.idCounter++);
+
+	/*
+	for (auto &gci : _gmm.components)
+		for (auto &gcj : _gmm.components)
+			if (gci.tag[0] == gcj.tag[0] && gci.w != gcj.w) {
+				//(gci.w > gcj.w) ? (gcj.initTag(_gmm.componentCounter++)) : (gci.initTag(_gmm.componentCounter++));
+				if (gci.w > gcj.w)
+					gcj.initTag(_gmm.componentCounter++);
+				else
+					gci.initTag(_gmm.componentCounter++);
+			}
+	*/
+}
+
+/**
+ * <summary> Updates the timestep of the Kalman Filter. </summary>
+ */
+void GMPHDFilter::updateKFTimestep(const double & _t)
+{
+	kf.setT(_t);
+}
