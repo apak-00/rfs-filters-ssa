@@ -24,11 +24,12 @@ vector<string>& split(const string &s, char delim, vector<string> &elements);
 
 MatrixXd getInitCovCV(const size_t& _dim, const double& _pCov, const double& _vCov);
 VectorXd readSimData();
+VectorXd readAdditionalClutterMeasurements();
 
 Sensor sensor;
 gaussian_mixture gmm;
-string filename, filenameSim;
-ifstream inputSim;
+string filename, filenameSim, filenameClutter;
+ifstream inputSim, inputClutter;
 VectorXd lBound, uBound;
 bool sim;
 string buffer;
@@ -116,6 +117,12 @@ void testGMJoTT(const T& filter, const size_t& _sDim, const size_t& _zDim, const
 	Astro::date datePrev, dateCurr;
 	double dt = 0, deg2rad = M_PI / 180.0;
 
+	// Additional measurements - added 30/03/2016
+	string filenameClutter = "rand_meas.txt";
+	inputClutter.open(filenameClutter);
+	bool additionalClutter = true;
+	VectorXd clutterMeasurement(3);
+
 	// State, observation's dimensions and intial timestep
 	prepareVariables(_sDim, _zDim, _dt, 100);
 
@@ -152,8 +159,21 @@ void testGMJoTT(const T& filter, const size_t& _sDim, const size_t& _zDim, const
 		}
 
 		measurements.clear();
-		measurements.push_back(info.segment(0,_zDim));
+		measurements.push_back(info.segment(0, _zDim));
 		bearing << info(1), info(2);
+
+		// Addtioinal clutter test
+		if (additionalClutter) 
+		{
+			VectorXd ranges = readAdditionalClutterMeasurements();
+			
+			for (size_t j = 0; j < ranges.size(); j++)
+			{
+				clutterMeasurement << ranges(j), bearing;
+				measurements.push_back(clutterMeasurement);
+			}
+		}
+		
 		sensor.setZ(measurements);
 		sensor.setBearing(bearing);
 
@@ -232,6 +252,7 @@ void testGMJoTT(const T& filter, const size_t& _sDim, const size_t& _zDim, const
 	}
 
 	outputFile.close();
+	inputClutter.close();
 }
 
 void testSTM() {
@@ -340,6 +361,22 @@ vector<string>& split(const string &s, char delim, vector<string> &elements) {
 VectorXd readSimData()
 {
 	getline(inputSim, buffer);
+	vector<string> elements;
+	split(buffer, ' ', elements);
+	VectorXd result(elements.size());
+
+	if (elements.size() != 0)
+	{
+		for (size_t i = 0; i < elements.size(); i++)
+			result[i] = stod(elements[i]);
+	}
+
+	return result;
+}
+
+VectorXd readAdditionalClutterMeasurements()
+{
+	getline(inputClutter, buffer);
 	vector<string> elements;
 	split(buffer, ' ', elements);
 	VectorXd result(elements.size());
