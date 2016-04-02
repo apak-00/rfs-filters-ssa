@@ -40,7 +40,7 @@ int main(int arcg, char** argv)
 {
 	sim = false;
 	
-	filename = "dataset_3.tdm";
+	filename = "dataset_1.tdm";
 	filenameSim = "iss_sim.txt";
 	
 	double dt = dt = 0.0704;
@@ -120,7 +120,7 @@ void testGMJoTT(const T& filter, const size_t& _sDim, const size_t& _zDim, const
 	// Additional measurements - added 30/03/2016
 	string filenameClutter = "rand_meas.txt";
 	inputClutter.open(filenameClutter);
-	bool additionalClutter = true;
+	bool additionalClutter = false;
 	VectorXd clutterMeasurement(3);
 
 	// State, observation's dimensions and intial timestep
@@ -197,6 +197,8 @@ void testGMJoTT(const T& filter, const size_t& _sDim, const size_t& _zDim, const
 		// Measurement
 		outputFile << i << " ";
 		printVector(outputFile, info.segment(0, _zDim));
+
+		
 		
 		// Estimates - ECEF
 		outputFile << estimates.size() << " " << gmjottfilter.getQ() << " ";
@@ -206,7 +208,7 @@ void testGMJoTT(const T& filter, const size_t& _sDim, const size_t& _zDim, const
 			printVector(outputFile, dummy);
 			
 		// Date
-		printVector(outputFile, info.segment(4, 6));
+		printVector(outputFile, info.segment(5, 6));
 
 		// Estimates - RAZEL
 		if (!estimates.empty()) 
