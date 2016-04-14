@@ -10,27 +10,41 @@
 typedef std::vector<double> state_type;
 
 /* SEZ to RAZEL transformation functions for automatic differentiation. */
+
+/**
+ * <summary> Cartesian -> spherical range. </summary>
+ * <returns> Range in spherical coordinate system. </returns>
+ */
 fadbad::F<double> xSEZtoRAZEL(const fadbad::F<double> _x, const fadbad::F<double> _y, const fadbad::F<double> _z,
 	const fadbad::F<double> _xdot, const fadbad::F<double> _ydot, const fadbad::F<double> _zdot) 
 {
 	return fadbad::sqrt(_x * _x + _y* _y + _z * _z);
 }
 
+/**
+* <summary> Cartesian -> spherical azimuth. </summary>
+* <returns> Azimuth in spherical coordinate system. </returns>
+*/
 fadbad::F<double> ySEZtoRAZEL(const fadbad::F<double> _x, const fadbad::F<double> _y, const fadbad::F<double> _z,
 	const fadbad::F<double> _xdot, const fadbad::F<double> _ydot, const fadbad::F<double> _zdot) 
 {
 	return fadbad::atan2(_y, _x);
-	//fadbad::F<double> temp = fadbad::sqrt(_x * _x + _y * _y);
-	//return fadbad::atan2(-_y / temp, _x / temp);
 }
 
+/**
+* <summary> Cartesian -> spherical elevation. </summary>
+* <returns> Elevation in spherical coordinate system. </returns>
+*/
 fadbad::F<double> zSEZtoRAZEL(const fadbad::F<double> _x, const fadbad::F<double> _y, const fadbad::F<double> _z,
 	const fadbad::F<double> _xdot, const fadbad::F<double> _ydot, const fadbad::F<double> _zdot) 
 {
 	return fadbad::atan2(_z, sqrt(_x * _x + _y * _y));
-	//return fadbad::asin(_z / fadbad::sqrt(_x * _x + _y * _y + _z * _z));
 }
 
+/**
+* <summary> Cartesian -> to spherical range rate. </summary>
+* <returns> Range rate in spherical coordinate system. </returns>
+*/
 fadbad::F<double> xdotSEZtoRAZEL(const fadbad::F<double> _x, const fadbad::F<double> _y, const fadbad::F<double> _z,
 	const fadbad::F<double> _xdot, const fadbad::F<double> _ydot, const fadbad::F<double> _zdot) 
 {
@@ -38,23 +52,24 @@ fadbad::F<double> xdotSEZtoRAZEL(const fadbad::F<double> _x, const fadbad::F<dou
 		fadbad::sqrt(_x * _x + _y* _y + _z * _z);
 }
 
+/**
+* <summary> Cartesian -> to spherical azimuth rate. </summary>
+* <returns> Azimuth rate in spherical coordinate system. </returns>
+*/
 fadbad::F<double> ydotSEZtoRAZEL(const fadbad::F<double> _x, const fadbad::F<double> _y, const fadbad::F<double> _z,
 	const fadbad::F<double> _xdot, const fadbad::F<double> _ydot, const fadbad::F<double> _zdot) 
 {
 	return (_x * _ydot - _y * _xdot) / (_x * _x + _y * _y);
-	//return (_xdot * _y - _ydot * _x) / (_x * _x + _y * _y);
 }
 
+/**
+* <summary> Cartesian -> spherical elevation rate. </summary>
+* <returns> Elevation rate in spherical coordinate system. </returns>
+*/
 fadbad::F<double> zdotSEZtoRAZEL(const fadbad::F<double> _x, const fadbad::F<double> _y, const fadbad::F<double> _z,
 	const fadbad::F<double> _xdot, const fadbad::F<double> _ydot, const fadbad::F<double> _zdot) 
 {
 	return  (_zdot * (_x * _x + _y * _y) - _z * (_x * _xdot + _y * _ydot)) / ((_x * _x + _y * _y + _z * _z) * (fadbad::sqrt(_x * _x + _y * _y)));
-	
-	//fadbad::F<double> rhodot = (_x * _xdot + _y * _ydot + _z * _zdot) / fadbad::sqrt(_x * _x + _y* _y + _z * _z);
-	//fadbad::F<double> temp = fadbad::sqrt(_x * _x + _y * _y);
-	//fadbad::F<double> el = fadbad::asin(_z / fadbad::sqrt(_x * _x + _y * _y + _z * _z));
-
-	//return (_zdot * rhodot * fadbad::sin(el)) / (fadbad::sqrt(_x * _x + _y * _y));
 }
 
 /**
@@ -81,7 +96,7 @@ void integrateOrbit(const state_type &x, state_type &dxdt, const double /* t */)
 }
 
 /*
- * <summary> Astro namespace. </summary>
+ * <summary> Astro namespace. Contains basic operations for coordinate transformations. </summary>
  */
 namespace Astro 
 {
@@ -105,10 +120,7 @@ namespace Astro
 		double sinAz = sin(az), cosAz = cos(az),
 			sinEl = sin(el), cosEl = cos(el);
 
-
-		if (!vtf) 
-		{
-
+			// Slightly different from Vallado's book
 			sez(0) = _razel(0) * cosEl * cosAz;
 			sez(1) = _razel(0) * cosEl * sinAz;
 			sez(2) = _razel(0) * sinEl;
@@ -119,21 +131,6 @@ namespace Astro
 				sez(4) = _razel(3) * cosEl * sinAz - sez(2) * sinAz * dElRad + sez(0) * dAzRad;
 				sez(5) = _razel(3) * sinEl + _razel(0) * dElRad * cosEl;
 			}
-		}
-		// Slightly different from Vallado book
-		else
-		{
-			sez(0) = -_razel(0) * cosEl * cosAz;	//
-			sez(1) = _razel(0) * cosEl * sinAz;		//
-			sez(2) = _razel(0) * sinEl;				//
-
-			if (_razel.size() == 6)
-			{
-				sez(3) = -_razel(3) * cosEl * cosAz + sez(2) * cosAz * dElRad + sez(1) * dAzRad;		//
-				sez(4) = _razel(3) * cosEl * sinAz - sez(2) * sinAz * dElRad + sez(0) * dAzRad;			//
-				sez(5) = _razel(3) * sinEl + _razel(0) * dElRad * cosEl;								//
-			}
-		}
 
 		return sez;
 	}
@@ -153,37 +150,27 @@ namespace Astro
 		double r2 = s2 + _sez(2) * _sez(2);
 		double s = sqrt(s2);
 
-		if (!vtf) 
-		{
-			razel(0) = sqrt(r2);
-			razel(1) = atan2(_sez(1), _sez(0)) / deg2rad;
-			razel(2) = atan2(_sez(2), s) / deg2rad;
+		razel(0) = sqrt(r2);
+		razel(1) = atan2(_sez(1), _sez(0)) / deg2rad;
+		razel(2) = atan2(_sez(2), s) / deg2rad;
 
-			if (_sez.size() == 6)
-			{
-				razel(3) = (_sez(0) * _sez(3) + _sez(1) * _sez(4) + _sez(2) * _sez(5)) / razel(0);
-				razel(4) = (_sez(0) * _sez(4) - _sez(1) * _sez(3)) / s2 / deg2rad;
-				razel(5) = (_sez(5) * s2 - _sez(2) * (_sez(0) * _sez(3) + _sez(1) * _sez(4))) / (r2 * s) / deg2rad;
-			}
-		}
-		// Slightly different from Vallado book
-		else
+		if (_sez.size() == 6)
 		{
-			razel(0) = sqrt(r2);										//
-			razel(1) = atan2(-_sez(1) / s, _sez(0) / s) / deg2rad;		
-			razel(2) = asin(_sez(2) / razel(0)) / deg2rad;
-
-			if (_sez.size() == 6)
-			{
-				razel(3) = (_sez(0) * _sez(3) + _sez(1) * _sez(4) + _sez(2) * _sez(5)) / razel(0);
-				razel(4) = (_sez(1) * _sez(3) - _sez(0) * _sez(4)) / s2 / deg2rad;
-				razel(5) = (_sez(5) - razel(3) * sin(razel(2))) / s;
-			}
+			razel(3) = (_sez(0) * _sez(3) + _sez(1) * _sez(4) + _sez(2) * _sez(5)) / razel(0);
+			razel(4) = (_sez(0) * _sez(4) - _sez(1) * _sez(3)) / s2 / deg2rad;
+			razel(5) = (_sez(5) * s2 - _sez(2) * (_sez(0) * _sez(3) + _sez(1) * _sez(4))) / (r2 * s) / deg2rad;
 		}
 
 		return razel;
 	}
 
+	/**
+	* <summary> Range, Azimuth, Elevation to Cartesian South-East-Zenith (SEZ) system. D. A. Vallado's book. </summary>
+	* <par> Similar to MATLAB sph2cart. </par>
+	* <param name = "_razel"> A VectorXd containing the position information in Range-Azimuth-Elevation frame.
+	* Physical azimuth measured from positive X-axis (S) is assumed). </param>
+	* <returns> VectorXd in the South-East-Zenith frame. </returns>
+	*/
 	VectorXd razelToSEZVallado(const VectorXd & _razel)
 	{
 		VectorXd sez(_razel.size());
@@ -195,13 +182,13 @@ namespace Astro
 		double sinAz = sin(az), cosAz = cos(az),
 			sinEl = sin(el), cosEl = cos(el);
 
-		sez(0) = -_razel(0) * cosEl * cosAz;
+		sez(0) = -_razel(0) * cosEl * cosAz;		// Minus here
 		sez(1) = _razel(0) * cosEl * sinAz;
 		sez(2) = _razel(0) * sinEl;
 
 		if (_razel.size() == 6)
 		{
-			sez(3) = -_razel(3) * cosEl * cosAz + sez(2) * cosAz * dElRad + sez(1) * dAzRad;
+			sez(3) = -_razel(3) * cosEl * cosAz + sez(2) * cosAz * dElRad + sez(1) * dAzRad;		// Minus here
 			sez(4) = _razel(3) * cosEl * sinAz - sez(2) * sinAz * dElRad + sez(0) * dAzRad;
 			sez(5) = _razel(3) * sinEl + _razel(0) * dElRad * cosEl;
 		}
@@ -209,6 +196,12 @@ namespace Astro
 		return sez;
 	}
 
+	/**
+	* <summary> Cartesian South-East-Zenith to Range, Azimuth, Elevation. D. A. Vallado's book. </summary>
+	* <par> Similar to MATLAB cart2sph. </par>
+	* <param name = "_sez"> VectorXd containing the position in South-East-Zenith frame. </param>
+	* <returns> VectorXd with the position in the Range-Azimuth-Elevation frame. </returns>
+	*/
 	VectorXd sezToRAZELVallado(const VectorXd & _sez)
 	{
 		VectorXd razel(_sez.size());
@@ -219,7 +212,7 @@ namespace Astro
 
 		razel(0) = sqrt(r2);
 		razel(1) = atan2(-_sez(1) / s, _sez(0) / s) / deg2rad;
-		razel(2) = asin(_sez(2) / razel(0)) / deg2rad;
+		razel(2) = asin(_sez(2) / razel(0)) / deg2rad;		// Asin here
 
 		if (_sez.size() == 6)
 		{
@@ -758,6 +751,7 @@ namespace Astro
 	}
 
 	/**
+	* TODO: There's something wrong with the matrix
 	 * <summary> Shepherd Matrix. </summary>
 	 * <param name = "_m0"> Initial state vector (ECI frame). </param>
 	 * <param name = "_t"> Desired timestep. </param>
@@ -827,12 +821,10 @@ namespace Astro
 			//u -= dt / 4.0 / (1-q) / r; 
 			u -= dt / (1.0 - q) / (4.0*r + dt * beta * u);
 		}
-
-		//std::cout << "i " << i << std::endl;
 			
 		if (qisbad) 
 		{
-			std::cout << "Пиздец" << std::endl;
+			std::cerr << "Q not converged." << std::endl;
 		} 
 		else
 		{
@@ -871,14 +863,6 @@ namespace Astro
 			rv << mp.transpose(), mv.transpose();
 			rvt = rv.transpose();
 
-			//std::cout << "M   : " << std::endl << M << std::endl << std::endl;
-			//std::cout << std::setprecision(6) << "x0: " << _m0.transpose() << std::endl;
-			//std::cout << "x : " << _m.transpose() << std::endl;
-
-			//std::cout << "rv0 : "<< rv0 << std::endl << std::endl;
-			//std::cout << "rv  : " << rv << std::endl;
-			//std::cout << "rvt : " << rvt << std::endl;
-
 			Phi_11 = f * I + rvt * M.block<2, 2>(1, 0) * rv0;
 			Phi_12 = g * I + rvt * M.block<2, 2>(1, 1) * rv0;
 			Phi_21 = F * I - rvt * M.block<2, 2>(0, 0) * rv0;
@@ -886,8 +870,6 @@ namespace Astro
 
 			theta << Phi_11, Phi_12, Phi_21, Phi_22;
 		}
-
-		//std::cout << std::endl << theta << std::endl;
 
 		return theta;
 	}

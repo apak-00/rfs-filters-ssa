@@ -17,6 +17,7 @@ namespace Astro {
 		date(const date& _d) : year(_d.year), month(_d.month), day(_d.day), hour(_d.hour), min(_d.min), sec(_d.sec) {}
 
 		// TODO: Fix
+		// Temporarily only HMS part is used to calculate the number of milliseconds for the difference
 		double toMS() const {
 			return sec + min * 60.0 + hour * 3600.0;
 		}

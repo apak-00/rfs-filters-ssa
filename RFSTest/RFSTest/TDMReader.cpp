@@ -8,23 +8,21 @@ using namespace std;
 TDMReader::TDMReader(): headerRead(false), buffer(""), header("") {}
 
 /**
- * Constructor of the TDMReader class instance.
- * Initializes the input.
- * @brief TDMReader::TDMReader
- * @param filename
+ * <summary> Constructor of the TDMReader class. </summary>
+ * <par> Initializes the input stream. </par>
+ * <param name = "_filename"> Input filename. </param>
  */
-TDMReader::TDMReader(string filename): headerRead(false), buffer(""), header("")
+TDMReader::TDMReader(string _filename): headerRead(false), buffer(""), header("")
 {   
-    inputFile.open(filename.c_str());
+    inputFile.open(_filename.c_str());
 
     if (!inputFile.is_open())
         cout << "Failed to open input file!" << endl;
 }
 
 /**
- * Destructor of the TDMReader class instance.
- * Closes the input file.
- * @brief TDMReader::~TDMReader
+ * <summary> Destructor of the TDMReader class instance. </summary>
+ * <par> Closes the input stream. </par>
  */
 TDMReader::~TDMReader()
 {
@@ -32,8 +30,8 @@ TDMReader::~TDMReader()
 }
 
 /**
- * Reads the header of the CAMRa TDM file. The header ends when the data starts.
- * @brief TDMReader::readHeader
+ * <summary> Reads the header of the CAMRa TDM file. </summary>
+ * <par> The header ends when the DATA_START delimeter is encountered. </par>
  */
 void TDMReader::readHeader() {
 
@@ -58,9 +56,9 @@ void TDMReader::readHeader() {
 }
 
 /**
- * Reads one data entry from the TDM file.
- * @brief TDMReader::readEntry
- * @return
+ * <summary> Reads a data entry from the TDM file. </summary>
+ * <returns> A vector<double> containing range, azimuth, elevation,
+ * signal strength, cross-polar signal strength and date. </returns>
  */
 vector<double> TDMReader::readEntry() {
 
@@ -88,6 +86,7 @@ vector<double> TDMReader::readEntry() {
 
     result.push_back( stod( elements.back()));
 
+	// Range, azimuth, elevation, ss, cpss
     for (int i = 0; i < 4; i++) {
         buffer.clear();
         getline(inputFile, buffer);
@@ -95,11 +94,12 @@ vector<double> TDMReader::readEntry() {
         result.push_back( stod( elements.back()));
     }
 
+	// date
     date = elements.at(2);
     split (date,'T',elements);
 
-    date = elements.at(0);
-    time = elements.at(1);
+    date = elements.at(0);		// Date YY-MM-DD
+    time = elements.at(1);		// Time HH:MM:SS
 
     split (date,'-',elements);
 
@@ -114,6 +114,11 @@ vector<double> TDMReader::readEntry() {
     return result;
 }
 
+/**
+ * <summary> Reads a data entry to an Eigen::VectorXd. </summary>
+ * <returns> A VectorXd containing range, azimuth, elevation,
+ * signal strength, cross-polar signal strength and date. </returns>
+ */
 Eigen::VectorXd TDMReader::readEntryEigen()
 {
 	vector<double> v = readEntry();
@@ -125,12 +130,10 @@ Eigen::VectorXd TDMReader::readEntryEigen()
 }
 
 /**
- * Accessor of the header of the current TDM file.
- * Reads the header if it was not read previously.
- * @brief TDMReader::getHeader
- * @return
+ * <summary> Accessor of the header of the current TDM file. </summary>
+ * <returns> A reference to the string containing the header. </returns>
  */
-string& TDMReader::getHeader() {
+string TDMReader::getHeader() {
 
     if (!headerRead) {
         readHeader();
@@ -143,9 +146,9 @@ string& TDMReader::getHeader() {
 /**
  * <summary> Splits a string according to the delimeters specified. </summary>
  * Source: http://stackoverflow.com/questions/236129/split-a-string-in-c
- * <return> A vector of strings containing the elements of the initial string </return>
+ * <returns> A vector of strings containing the elements of the initial string </returns>
  */
-vector<string>& TDMReader::split(const string &s, char delim, vector<string> &elements) {\
+vector<string>& TDMReader::split(const string &s, char delim, vector<string> &elements) {
 
     std::stringstream ss(s);
     std::string item;
@@ -153,10 +156,9 @@ vector<string>& TDMReader::split(const string &s, char delim, vector<string> &el
     if (elements.size() != 0)
         elements.clear();
 
-    while (std::getline(ss, item, delim)) {
+    while (std::getline(ss, item, delim)) 
         if (item.size() > 0)
             elements.push_back(item);
-    }
 
     return elements;
 }

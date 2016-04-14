@@ -9,9 +9,12 @@
 #include <fstream>
 #include <iomanip>
 
+#include <dirent.h>
+
 using namespace std;
 using namespace Eigen;
 
+// Function for JoTT testing
 template <typename T>
 void testGMJoTT(const T& _filter, const size_t& _sDim, const size_t& _zDim, const double& _dt, const double& _pS, const double& _pB,
 	const double& _q, const unsigned int& _nBirth, const double& _bIntensity, const string& _outputFileName);
@@ -25,6 +28,13 @@ vector<string>& split(const string &s, char delim, vector<string> &elements);
 MatrixXd getInitCovCV(const size_t& _dim, const double& _pCov, const double& _vCov);
 VectorXd readSimData();
 VectorXd readAdditionalClutterMeasurements();
+
+bool has_suffix(const string& s, const string& suffix)
+{
+	return (s.size() >= suffix.size()) && equal(suffix.rbegin(), suffix.rend(), s.rbegin());
+}
+
+void tdmToCSV(const string& _s);
 
 Sensor sensor;
 gaussian_mixture gmm;
@@ -51,9 +61,11 @@ int main(int arcg, char** argv)
 	ExtendedKalmanFilter ekf(F, Q, dt);
 
 	// sDim, zDim, dt, pS, pB, q, nB, bI, file
-	testGMJoTT(ekf, sDim, zDim, dt, 1, 0.5, 0.01, 1, 1, "output_gmjott_6d.txt");
+	//testGMJoTT(ekf, sDim, zDim, dt, 1, 0.5, 0.01, 1, 1, "output_gmjott_6d.txt");
 
 	//testSTM();
+	
+	tdmToCSV("C:\\Development\\Git\\SSA RFS\\RFSTest\\RFSTest");
 
 	return 0;
 }
@@ -167,7 +179,7 @@ void testGMJoTT(const T& filter, const size_t& _sDim, const size_t& _zDim, const
 		{
 			VectorXd ranges = readAdditionalClutterMeasurements();
 			
-			for (size_t j = 0; j < ranges.size(); j++)
+			for (size_t j = 0; j < (size_t)ranges.size(); j++)
 			{
 				clutterMeasurement << ranges(j), bearing;
 				measurements.push_back(clutterMeasurement);
@@ -197,8 +209,6 @@ void testGMJoTT(const T& filter, const size_t& _sDim, const size_t& _zDim, const
 		// Measurement
 		outputFile << i << " ";
 		printVector(outputFile, info.segment(0, _zDim));
-
-		
 		
 		// Estimates - ECEF
 		outputFile << estimates.size() << " " << gmjottfilter.getQ() << " ";
@@ -275,15 +285,6 @@ void testSTM() {
 
 	cout << endl;
 
-	/*
-	for (size_t i = 10; i <= 110; i += 10) {
-		shepperd =  Astro::getShepperdMatrix(state, (double)i, result, Astro::MU_E);
-		cout << result.transpose() << endl;
-		printVector(stm, result);
-		stm << endl;
-	}
-	*/
-
 	stm.close();
 }
 
@@ -310,7 +311,7 @@ void testTransformations()
 
 void printVector(ofstream& _os, const VectorXd & v)
 {
-	for (size_t i = 0; i < v.size(); i++)
+	for (size_t i = 0; i < (size_t)v.size(); i++)
 		_os << v(i) << " ";
 }
 
@@ -390,6 +391,61 @@ VectorXd readAdditionalClutterMeasurements()
 	}
 
 	return result;
+}
+
+void tdmToCSV(const string & _s)
+{
+	DIR *dir = opendir(_s.c_str());
+	if (!dir)
+		cout << "Directory not found" << endl;
+	else 
+	{
+		dirent *entry;
+
+		while (entry = readdir(dir))
+		{
+			if (has_suffix(entry->d_name, ".tdm"))
+			{
+				cout << entry->d_name << endl;
+
+				string filepath = _s + "\\" + entry->d_name;
+
+				TDMReader tdmr(filepath);
+
+				ofstream ofscsv;
+
+				string filenameCSV = entry->d_name;
+				filenameCSV.replace(filenameCSV.end() - 3, filenameCSV.end(), "csv");
+
+				ofscsv.open(filenameCSV);
+
+				tdmr.getHeader();
+
+				vector<double> dataEntry;
+
+				while (true) {
+
+					dataEntry = tdmr.readEntry();
+
+					if (!dataEntry.size())
+						break;
+
+					for (size_t i = 0; i < dataEntry.size()-1; i++) 
+						ofscsv << dataEntry[i] << ",";
+
+					ofscsv << dataEntry[dataEntry.size() - 1] << endl;
+				}
+
+				ofscsv.close();
+
+			}
+		}
+
+		
+	}
+		
+	closedir(dir);
+	
 }
 
 /**

@@ -5,6 +5,9 @@
 
 using namespace Eigen;
 
+/**
+ * <summary> Kalman Filter class. </summary>
+ */
 class KalmanFilter
 {
 

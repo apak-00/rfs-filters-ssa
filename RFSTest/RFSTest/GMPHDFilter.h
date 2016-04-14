@@ -4,6 +4,9 @@
 #include "Sensor.h"
 #include "gmm.h"
 
+/*
+* <summary> Gaussian Mixture Probability Hypothesis Density Filter class. </summary>
+*/
 class GMPHDFilter
 {
 protected:

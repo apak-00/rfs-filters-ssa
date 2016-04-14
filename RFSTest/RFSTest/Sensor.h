@@ -46,7 +46,8 @@ protected:
 
 	double xp;			// Polar motion coefficient x
 	double yp;			// Polar motion coefficient y
-	double lod;			
+	double lod;			// Length-of-day (see Vallado)
+
 public:
 	Sensor();
 	Sensor(const size_t& _zDim, const size_t& _sDim, const double& _pD, const double& _lambda, const double& _V);

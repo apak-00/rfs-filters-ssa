@@ -2,7 +2,7 @@
 #include <iostream>
 
 /**
- * <summary> Empty constructor of th ExtendedKalmanFilter class. </summary>
+ * <summary> Empty constructor of the ExtendedKalmanFilter class. </summary>
  */
 ExtendedKalmanFilter::ExtendedKalmanFilter() : KalmanFilter() {}
 

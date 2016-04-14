@@ -7,6 +7,9 @@
 
 #include <iostream>
 
+/*
+* <summary> Gaussian Mixture Joint Target Detection and Tracking class. </summary>
+*/
 template<typename T>
 class GMJoTTFilter
 {

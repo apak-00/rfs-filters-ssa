@@ -78,6 +78,7 @@ void gaussian_mixture::merge(const double & _mergeThreshold)
 				i++;
 		}
 	}
+
 	components = temp;
 }
 
@@ -315,5 +316,4 @@ std::ostream & operator<<(std::ostream & _os, const gaussian_mixture & _gm)
 		_os << gc << std::endl;
 	
 	return _os;
-	// TODO: insert return statement here
 }

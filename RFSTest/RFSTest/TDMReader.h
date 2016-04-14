@@ -19,7 +19,7 @@ public:
     vector<double> readEntry();
 	Eigen::VectorXd readEntryEigen();
 
-    string& getHeader();
+    string getHeader();
 
 private:
     ifstream inputFile;

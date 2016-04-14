@@ -1,6 +1,9 @@
 #pragma once
 #include "KalmanFilter.h"
 
+/*
+ * <summary> Extended Kalman Filter class. </summary>
+ */
 class ExtendedKalmanFilter:
 	public KalmanFilter
 {

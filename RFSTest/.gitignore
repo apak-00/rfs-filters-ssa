@@ -4,6 +4,7 @@
 # Personal - Added 29/03/2016 - Tracking Data Messages and Text Files
 *.tdm
 *.txt
+*.csv
 
 # VS .opendb
 *.opendb
