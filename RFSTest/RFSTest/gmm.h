@@ -5,6 +5,27 @@
 
 using namespace Eigen;
 
+/*
+ * <summary> Mixture interface. </summary>
+ */
+template <typename T>
+struct mixture {
+
+	size_t nMax;
+	size_t dimension;
+	unsigned int idCounter;							// Id Counter
+	unsigned int trackCounter;
+
+	std::vector<T> components;		// Vector with components
+
+	/* Operator overloading */
+	T operator [] (size_t i) const { return components[i]; }
+	T& operator[] (size_t i) { return components[i]; }
+
+	virtual void merge(const double& _mergeThreshold) = 0;
+	virtual void prune(const double& _pruneThreshold) = 0;
+};
+
 /**
  *	<summary> Gaussian component. </summary>
  */
@@ -25,8 +46,8 @@ struct gaussian_component {
 
 	/* Operator overloading */
 	bool operator > (const gaussian_component& _gc) const { return w > _gc.w; }
-	bool operator < (const gaussian_component& _gc) const { return w < _gc.w; };
-	bool operator == (const gaussian_component _gc) const { return w == _gc.w; };
+	bool operator < (const gaussian_component& _gc) const { return w < _gc.w; }
+	bool operator == (const gaussian_component _gc) const { return w == _gc.w; }
 	bool operator >= (const gaussian_component& _gc) const { return w >= _gc.w; }
 	bool operator <= (const gaussian_component& _gc) const { return w <= _gc.w; }
 
@@ -47,7 +68,7 @@ struct gaussian_mixture {
 
 	size_t nMax;									// Maximum number of components
 	size_t dimension;								// Dimensionality of the components
-	unsigned int idCounter;					// Id Counter
+	unsigned int idCounter;							// Id Counter
 	unsigned int trackCounter;
 	std::vector<gaussian_component> components;		// Vector with components
 	 
@@ -81,3 +102,27 @@ struct gaussian_mixture {
 };
 
 std::ostream& operator << (std::ostream& _os, const gaussian_mixture& _gm);
+
+// Beta Gaussian Mixture
+
+struct beta_gaussian_component : gaussian_component {
+
+	double u, v;	// Beta distribution components
+	bool mahler = false;
+
+	/* Constructors */
+	beta_gaussian_component();
+	beta_gaussian_component(const decltype(m)& _m, const decltype(P)& _P, const decltype(w)& _w, const int& _id, const double& _u, const double& _v);
+	beta_gaussian_component(const beta_gaussian_component& _bgc);
+
+	beta_gaussian_component operator+ (const beta_gaussian_component& _bgc) const;
+
+	static double getBetaMean(const double& _u, const double & _v);
+	static double getBetaVariance(const double& _u, const double& _v, const double& _bMu);
+
+};
+
+
+struct beta_gaussian_mixture {
+
+};

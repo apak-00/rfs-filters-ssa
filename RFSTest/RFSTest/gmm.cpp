@@ -317,3 +317,104 @@ std::ostream & operator<<(std::ostream & _os, const gaussian_mixture & _gm)
 	
 	return _os;
 }
+
+/*
+ * <summary> An empty constructor for the beta-Gaussian component structure. </summary>
+ * <par> Initializes everything to zero, and u and v parameters of beta distribution to one. </par>
+ */
+beta_gaussian_component::beta_gaussian_component() : gaussian_component()
+{
+	u = 1;
+	v = 1;
+}
+
+/**
+ * <summary> Default constructor for the beta-Gaussian component structure. </summary>
+ * <param name = "_m"> The mean. </param>
+ * <param name = "_P"> The covariance. </param>
+ * <param name = "_w"> The weight. </param>
+ * <param name = "_id"> The id. </param>
+ * <param name = "_u"> First parameter of the beta distribution. </param>
+ * <param name = "_v"> Second parameter of the beta distribution. </param>
+ */
+beta_gaussian_component::beta_gaussian_component(const decltype(m)& _m, const decltype(P)& _P, const decltype(w)& _w, const int & _id, 
+	const double & _u, const double & _v) : gaussian_component (_m, _P, _w, _id)
+{
+	u = _u;
+	v = _v;
+}
+
+/**
+ * <summary> Copy constructor for the beta-Gaussian component structure. </summary>
+ * <param name = "_bgc"> A beta-Gaussian component to copy from. </param>
+ */
+beta_gaussian_component::beta_gaussian_component(const beta_gaussian_component & _bgc) : gaussian_component(_bgc)
+{
+	u = _bgc.u;
+	v = _bgc.v;
+}
+
+beta_gaussian_component beta_gaussian_component::operator+(const beta_gaussian_component & _bgc) const
+{
+	// I was confused how to call the parent operator properly and still preserve access to inital variables.
+	// So the first part is simply copied from the gaussian_component + operator.
+
+	assert(m.size() == _gc.m.size() && "Terms are of different dimensions.");
+
+	beta_gaussian_component result(*this);
+	VectorXd d = m - _bgc.m;
+
+	result.w = w + _bgc.w;
+	result.m = (m * w + _bgc.m * _bgc.w) / result.w;
+	result.P = (P * w + _bgc.P * _bgc.w) / result.w + d * d.transpose() * w * _bgc.w;
+
+	result.kindaConverged = kindaConverged || _bgc.kindaConverged;
+
+	// Beta component part
+
+	// Do it according to the Mahler's book or in the simple manner
+	if (mahler) 
+	{
+		double theta0, v0, v1, v2, mu0, mu1, mu2;
+
+		mu1 = getBetaMean(u, v);
+		mu2 = getBetaMean(_bgc.u, _bgc.v);
+		v1 = getBetaVariance(u, v, mu1);
+		v2 = getBetaVariance(_bgc.u, _bgc.v, mu2);
+
+		mu0 = (w * mu1 + _bgc.w * mu2) / result.w;
+		// TODO: Check the typo (?)
+		v0 = -mu0 * mu0 + (w * (mu1 * mu1 + v1) + _bgc.w * (mu2 * mu2 + v2)) / result.w;
+
+		theta0 = mu0 * (1 - mu0) / v0 - 1;
+
+		result.u = theta0 * mu0;
+		result.w = theta0 * (1 - mu0);
+	}
+	// Assign the beta parameters of the component with the highest weight
+	else
+	{
+		if (w > _bgc.w)
+		{
+			result.u = u;
+			result.v = v;
+		}
+		else 
+		{
+			result.u = _bgc.u;
+			result.v = _bgc.v;
+		}
+	}
+
+	return result;
+}
+
+double beta_gaussian_component::getBetaMean(const double & _u, const double & _v)
+{
+	return _u / (_u + _v);
+}
+
+double beta_gaussian_component::getBetaVariance(const double & _u, const double & _v, const double & _bMu)
+{
+	return _bMu * (1 - _bMu) / (_u + _v + 1);
+}

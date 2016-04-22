@@ -56,11 +56,11 @@ int main(int arcg, char** argv)
 	ExtendedKalmanFilter ekf(F, Q, dt);
 
 	// sDim, zDim, dt, pS, pB, q, nB, bI, file
-	//testGMJoTT(ekf, sDim, zDim, dt, 1, 0.5, 0.01, 1, 1, "output_gmjott_6d.txt");
+	testGMJoTT(ekf, sDim, zDim, dt, 1, 0.5, 0.01, 1, 1, "output_gmjott_6d.txt");
 
 	//testSTM();
 	
-	tdmToCSV("I:\\CAMRa .csv");
+	//tdmToCSV("I:\\CAMRa .csv");
 
 	return 0;
 }
