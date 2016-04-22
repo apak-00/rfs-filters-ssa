@@ -23,18 +23,13 @@ void testTransformations();
 void printVector(ofstream& _os, const VectorXd& v);
 void prepareVariables(const size_t& _sDim, const size_t& _zDim, const double& _dt, const size_t& _gmmSize);
 void testSTM();
-vector<string>& split(const string &s, char delim, vector<string> &elements);
+void tdmToCSV(const string& _s);
 
+vector<string>& split(const string &s, char delim, vector<string> &elements);
 MatrixXd getInitCovCV(const size_t& _dim, const double& _pCov, const double& _vCov);
 VectorXd readSimData();
 VectorXd readAdditionalClutterMeasurements();
-
-bool has_suffix(const string& s, const string& suffix)
-{
-	return (s.size() >= suffix.size()) && equal(suffix.rbegin(), suffix.rend(), s.rbegin());
-}
-
-void tdmToCSV(const string& _s);
+bool has_suffix(const string& s, const string& suffix);
 
 Sensor sensor;
 gaussian_mixture gmm;
@@ -65,7 +60,7 @@ int main(int arcg, char** argv)
 
 	//testSTM();
 	
-	tdmToCSV("D:\\CAMRa .csv");
+	tdmToCSV("I:\\CAMRa .csv");
 
 	return 0;
 }
@@ -267,6 +262,23 @@ void testGMJoTT(const T& filter, const size_t& _sDim, const size_t& _zDim, const
 	inputClutter.close();
 }
 
+/**
+* ///////////////////////////////////////////////////////////////////////////////////////////////////////////
+*/
+
+/**
+ * <summary> Checks if the specified string contains the desired character sequence (suffix). </summary>
+ * <param name = "_s"> The main string to be searched. </param>
+ * <param name = "_suffix"> The required substring. </param>
+ */
+bool has_suffix(const string& _s, const string& _suffix)
+{
+	return (_s.size() >= _suffix.size()) && equal(_suffix.rbegin(), _suffix.rend(), _s.rbegin());
+}
+
+/**
+ * <summary> A function for testing Shepperd state transition matrix. </summary>
+ */
 void testSTM() {
 
 	ofstream stm;
@@ -288,10 +300,9 @@ void testSTM() {
 	stm.close();
 }
 
-/**
-* ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-*/
-
+/*
+ * <summary> A function for testing coordinate transformations. </summary>
+ */
 void testTransformations()
 {
 	double deg2rad = M_PI / 180.0;
@@ -309,39 +320,48 @@ void testTransformations()
 
 }
 
-void printVector(ofstream& _os, const VectorXd & v)
+/*
+ * <summary> A function for printing Eigen vector with single spacing between components. </summary>
+ * <param name = "_os"> A reference to the output stream. </param>
+ * <param name = "_v"> A constant reference to the vector to print. </param>
+ */
+void printVector(ofstream& _os, const VectorXd & _v)
 {
-	for (size_t i = 0; i < (size_t)v.size(); i++)
-		_os << v(i) << " ";
+	for (size_t i = 0; i < (size_t)_v.size(); i++)
+		_os << _v(i) << " ";
 }
 
 /**
-* <summary> Uniform birth process for range filtering </summary>
-*/
+ * <summary> Uniform birth process for range filtering </summary>
+ * <param name = "_sensor"> A refenrce to the sensor. </param>
+ * <param name = "_sensor"> Measurement number </param>
+ * <returns> A 2-dimensional VectorXd containing range = 1000 and zero velocity. </returns>
+ */
 VectorXd uniformBirthRange2D(Sensor& _sensor, const size_t& _zNum)
 {
 	VectorXd birth(2);
 	birth << 1000, 0;
-
 	return birth;
 }
 
 /**
-* <summary> Uniform birth process for 6D filtering in ECI. </summary>
-*/
+ * <summary> Uniform birth process for 6D filtering in ECI. </summary>
+ * <param name = "_sensor"> A reference to the sensor. </param>
+ * <param name = "_zNum"> Mesurement number. </param>
+ * <returns> A VectorXd containing a ECI state vector with range = 1000 km along the current sensor bearing. </returns>
+ */
 VectorXd uniformBirthRange6DRAZEL(Sensor & _sensor, const size_t& _zNum)
 {
 	VectorXd birth = _sensor.getZ(_zNum);
 	birth(0) = 1000;
-
 	return Astro::razelToTEME(birth, _sensor.getPosition(), Astro::getJulianDay(_sensor.getDate()), _sensor.getXp(), sensor.getYp(), 2);
 }
 
 /**
-* <summary> Splits a string according to the delimeters specified. </summary>
-* Source: http://stackoverflow.com/questions/236129/split-a-string-in-c
-* <return> A vector of strings containing the elements of the initial string </return>
-*/
+ * <summary> Splits a string according to the delimeters specified. </summary>
+ * Source: http://stackoverflow.com/questions/236129/split-a-string-in-c
+ * <returns> A vector of strings containing the elements of the initial string </returns>
+ */
 vector<string>& split(const string &s, char delim, vector<string> &elements) {
 
 	std::stringstream ss(s);
@@ -360,6 +380,7 @@ vector<string>& split(const string &s, char delim, vector<string> &elements) {
 
 /**
  * <summary> Reads simulated data. </summary>
+ * <returns> A VectorXd with the simulated rada measurement and corresponding timestamp. </returns>
  */
 VectorXd readSimData()
 {
@@ -377,6 +398,10 @@ VectorXd readSimData()
 	return result;
 }
 
+/**
+ * <summary> A function for reading additional clutter measurements generated in Matlab. </summary>
+ * <retuns> A VectorXd containing clutter measurements. </returns>
+ */
 VectorXd readAdditionalClutterMeasurements()
 {
 	getline(inputClutter, buffer);
@@ -393,6 +418,10 @@ VectorXd readAdditionalClutterMeasurements()
 	return result;
 }
 
+/**
+ * <summary> A function for converting all files with .tdm extension to .csv file with raw data. </summary>
+ * <param name = "_s"> A path to the folder containing .tdm files. </param>
+ */
 void tdmToCSV(const string & _s)
 {
 	DIR *dir = opendir(_s.c_str());
@@ -401,32 +430,24 @@ void tdmToCSV(const string & _s)
 	else 
 	{
 		dirent *entry;
+		ofstream ofscsv;
+		string filePath;
+		vector<double> dataEntry;
 
+		// Read all files
 		while (entry = readdir(dir))
 		{
+			// Check for .tdm extension
 			if (has_suffix(entry->d_name, ".tdm"))
 			{
 				cout << entry->d_name << endl;
+				filePath = _s + "\\" + entry->d_name;
+				TDMReader tdmr(filePath);
 
-				string filepath = _s + "\\" + entry->d_name;
-
-				
-
-				TDMReader tdmr(filepath);
-
-				ofstream ofscsv;
-
-				string filenameCSV = entry->d_name;
-				filenameCSV.replace(filenameCSV.end() - 3, filenameCSV.end(), "csv");
-				string filepathcsv = _s + "\\" + filenameCSV;
-
-				ofscsv.open(filepathcsv);
+				filePath.replace(filePath.end() - 3, filePath.end(), "csv");
+				ofscsv.open(filePath);
 
 				tdmr.getHeader();
-
-				cout << filepathcsv << endl;
-
-				vector<double> dataEntry;
 
 				while (true) {
 
@@ -442,11 +463,8 @@ void tdmToCSV(const string & _s)
 				}
 
 				ofscsv.close();
-
 			}
 		}
-
-		
 	}
 		
 	closedir(dir);
@@ -454,8 +472,12 @@ void tdmToCSV(const string & _s)
 }
 
 /**
-* <summary> Gets the inital covariance for the constant velocity model. </summary>
-*/
+ * <summary> Gets the inital covariance for the constant velocity model. </summary>
+ * <param name = "_dim"> Dimension of the state vector. </param>
+ * <param name = "_pCov"> Covariance of the position. </param>
+ * <param name = "_vCov"> Covariance of the velocity </param>
+ * <returns> MatrixXd containing the initial covariance matrix (constant velocity model). </returns>
+ */
 MatrixXd getInitCovCV(const size_t & _dim, const double & _pCov, const double & _vCov)
 {
 	assert(_dim % 2 == 0 && "Works only for even-sized matrices");

@@ -17,7 +17,7 @@ TDMReader::TDMReader(string _filename): headerRead(false), buffer(""), header(""
     inputFile.open(_filename.c_str());
 
     if (!inputFile.is_open())
-        cout << "Failed to open input file!" << endl;
+        cout << "TDMReader: Failed to open input file!" << endl;
 }
 
 /**
@@ -78,7 +78,7 @@ vector<double> TDMReader::readEntry() {
 
     if (elements.size() == 1) {
         if (strcmp(elements.at(0).c_str(), DATA_DELIM_END) == 0) {
-            cout << "End of file reached." << endl;
+            cout << "TDMReader: End of file reached." << endl;
             result.clear();
             return result;
         }
