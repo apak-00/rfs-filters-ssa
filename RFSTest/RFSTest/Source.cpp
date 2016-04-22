@@ -65,7 +65,7 @@ int main(int arcg, char** argv)
 
 	//testSTM();
 	
-	tdmToCSV("C:\\Development\\Git\\SSA RFS\\RFSTest\\RFSTest");
+	tdmToCSV("D:\\CAMRa .csv");
 
 	return 0;
 }
@@ -410,16 +410,21 @@ void tdmToCSV(const string & _s)
 
 				string filepath = _s + "\\" + entry->d_name;
 
+				
+
 				TDMReader tdmr(filepath);
 
 				ofstream ofscsv;
 
 				string filenameCSV = entry->d_name;
 				filenameCSV.replace(filenameCSV.end() - 3, filenameCSV.end(), "csv");
+				string filepathcsv = _s + "\\" + filenameCSV;
 
-				ofscsv.open(filenameCSV);
+				ofscsv.open(filepathcsv);
 
 				tdmr.getHeader();
+
+				cout << filepathcsv << endl;
 
 				vector<double> dataEntry;
 
