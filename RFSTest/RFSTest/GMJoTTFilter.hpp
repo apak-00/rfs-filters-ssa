@@ -62,7 +62,7 @@ public:
 		double qPred = pB * (1 - q) + pS * q, range;
 		double initialWeight = (birthIntensity / nBirthComponents) * pB * (1 - q) / qPred;
 		vector<double> birthRanges;
-		VectorXd birth(gmm.dim());
+		VectorXd birth(_gmm.dim());
 
 		// Predict existing components
 		for (auto &gc : _gmm.components) {
@@ -82,11 +82,11 @@ public:
 			// Uniform birth test
 			range = birthRanges[i];
 			
-			if (gmm.dim() == 2) 
+			if (_gmm.dim() == 2)
 				birth << range, 0;
-			else if (gmm.dim() == 6)
+			else if (_gmm.dim() == 6)
 			{
-				VectorXd m(gmm.dim());
+				VectorXd m(_gmm.dim());
 				m << range, _sensor.getBearing(), 0, 0, 0;
 				birth = Astro::razelToTEME(m, _sensor.getPosition(), _sensor.getDateJD(), _sensor.getLOD(), _sensor.getXp(), _sensor.getYp());
 			}
@@ -107,7 +107,6 @@ public:
 		double cz = 1.0 / 231609.0 * 100000;
 		//double cz = 0.1;// 1.0 / 231609.0;			// Temporary fix for cz
 
-		// Multiply everything by (1 - pD) (First term of the JoTT update)
 		auto pD = _sensor.getPD();
 		size_t n0 = _gmm.size();
 		double delta_k = 0;

@@ -39,6 +39,15 @@
     <ClInclude Include="Astro.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="bGMJoTTFilter.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="unscented_sampler.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="UnscentedKalmanFilter.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="gmm.cpp">
@@ -65,8 +74,14 @@
     <ClCompile Include="Astro.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="UnscentedKalmanFilter.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+    <None Include="params_bgmjott.yaml">
+      <Filter>Resource Files</Filter>
+    </None>
   </ItemGroup>
 </Project>

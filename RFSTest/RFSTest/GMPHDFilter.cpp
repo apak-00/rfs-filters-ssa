@@ -31,7 +31,8 @@ void GMPHDFilter::predict(gaussian_mixture & _gmm)
 	// New target birth
 	double initialWeight = birthIntensity / nBirthComponents;
 	for (size_t i = 0; (i < nBirthComponents) && (_gmm.size() < _gmm.nMax); i++)
-		_gmm.addComponent(gaussian_mixture::randVec(lowerBound, upperBound), initialCovariance, initialWeight);
+		// Changed 22/4/2016
+		_gmm.addComponent(gaussian_component(gaussian_mixture::randVec(lowerBound, upperBound), initialCovariance, initialWeight, _gmm.idCounter++));
 }
 
 /**

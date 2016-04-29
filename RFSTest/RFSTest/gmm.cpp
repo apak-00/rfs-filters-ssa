@@ -7,7 +7,7 @@
 /**
  * <summary> An empty constructor fo the Gaussian Mixture. </summary>
  */
-gaussian_mixture::gaussian_mixture() : nMax(0), dimension(0), idCounter(0), trackCounter(0){}
+gaussian_mixture::gaussian_mixture() : mixture() {}
 
 /**
  * <summary> Constructor that initializes an empty Gaussian Mixture of speified dimension. </summary>
@@ -15,7 +15,7 @@ gaussian_mixture::gaussian_mixture() : nMax(0), dimension(0), idCounter(0), trac
  * <param name = "_nMax"> Maximum number of the Gaussian componentes. </param>
  */
 gaussian_mixture::gaussian_mixture(const size_t & _dim, const size_t & _nMax)
-	: dimension (_dim), nMax(_nMax), idCounter(1), trackCounter(1) {}
+	: mixture(_dim, _nMax) {}
 
 /**
  * <summary> Constructor that initializes a Gaussian Mixture with n random elements. </summary>
@@ -27,10 +27,9 @@ gaussian_mixture::gaussian_mixture(const size_t & _dim, const size_t & _nMax)
  * <param name = "_iWeight"> Initial weight for the new components. </param>
  */
 gaussian_mixture::gaussian_mixture(const size_t & _dim, const size_t & _n, const size_t & _nMax,
-	const VectorXd& _lBound, const VectorXd& _uBound, const MatrixXd& _iCov, const double& _iWeight) 
-	: dimension(_dim), nMax(_nMax), idCounter(1), trackCounter(1)
+	const VectorXd& _lBound, const VectorXd& _uBound, const MatrixXd& _iCov, const double& _iWeight)
+	: mixture(_dim, _n, _nMax)
 {
-	components.resize(_n);
 	for (size_t i = 0; i < components.size(); i++) 
 		components[i] = gaussian_component(randVec(_lBound, _uBound), _iCov, _iWeight, idCounter++);
 }
@@ -40,8 +39,7 @@ gaussian_mixture::gaussian_mixture(const size_t & _dim, const size_t & _n, const
  * <param name = "_gm"> An instance of Gaussian Mixture to copy from. </param>
  */
 gaussian_mixture::gaussian_mixture(const gaussian_mixture & _gm)
-	: dimension (_gm.dimension), nMax(_gm.nMax), idCounter( _gm.idCounter), components(_gm.components),
-	trackCounter(_gm.trackCounter) {}
+	: mixture(_gm) {}
 
 /**
  * <summary> Merge of the Gaussian Components within threshold range. </summary>
@@ -62,7 +60,7 @@ void gaussian_mixture::merge(const double & _mergeThreshold)
 
 		for (auto i = components.begin(); i != components.end();) {
 
-			double distance = hellinger(temp.back().m, temp.back().P, i->m, i->P);
+			double distance = hellinger(temp.back(), *i);
 
 			if (distance < _mergeThreshold) {
 				temp.back() = temp.back() + *i;
@@ -80,135 +78,6 @@ void gaussian_mixture::merge(const double & _mergeThreshold)
 	}
 
 	components = temp;
-}
-
-/**
- * <summary> Pruning of the Gaussian Components with weights under the threshold. </summary>
- * <param name = _weightThreshold> Pruning weight threshold. </param>
- */
-void gaussian_mixture::prune(const double & _pruneThreshold)
-{
-	auto pruned = std::remove_if(components.begin(), components.end(),
-		[&_pruneThreshold](const gaussian_component& gc) { return gc.w < _pruneThreshold; });
-	components.erase(pruned, components.end());
-}
-
-/**
- * <summary> Accessor of the components with weight greater than threshold </summary>
- * <param name = "_estimateThreshold"> Estimation weight threshold. </param>
- * <returns> Returns the Gaussian components with weight above threshold. </returns>
- */
-auto gaussian_mixture::getEstimates(const double& _estimateThreshold) -> decltype(components)
-{
-	auto below = std::remove_if(components.begin(), components.end(),
-		[&_estimateThreshold](const gaussian_component& gc) { return gc.w < _estimateThreshold; });
-
-	for (auto i = components.begin(); i != below; i++) {
-		if (i->tag[1] == 0)
-			i->tag[1] = trackCounter++;
-		i->tag[2]++;
-	}
-
-	return std::vector<gaussian_component>(components.begin(), below);
-}
-
-/**
- * <summary> Accessor of the weights variable. </summary>
- * <returns> And std::vector<double> containing the weights of the components. </returns>
- */
-std::vector<double> gaussian_mixture::getWeights()
-{
-	std::vector<double> result;
-	result.resize(components.size());
-
-	for (size_t i = 0; i < components.size(); i++)
-		result[i] = components[i].w;
-	
-	return result;
-}
-
-/**
- * <summary> Returns the number of Gaussian Components in the Gaussian Mixture. </summary>
- * <returns> The number of elements in the Gaussian Mixture. </returns>
- */
-size_t gaussian_mixture::size() const
-{
-	return components.size();
-}
-
-/**
- * <summary> Returns the dimensionality of the Gaussian Components'. </summary>
- * <returns> The dimensionality of the components. </returns>
- */
-size_t gaussian_mixture::dim() const
-{
-	return dimension;
-}
-
-/**
- * <summary> Adds a component. </summary>
- * <param = "_m"> Mean of the added component. </param>
- * <param = "_P"> Covariance of the added component. </param>
- * <param = "_w"> Weight of the added component. </param>
- */
-void gaussian_mixture::addComponent(const VectorXd & _m, const MatrixXd & _P, const double & _w)
-{
-	assert(_m.size() == dimension && "Attempt to add a GMM component of different dimension ");
-
-	if (components.size() < nMax)
-		components.push_back(gaussian_component(_m, _P, _w, idCounter++));
-}
-
-/**
- * <summary> Adds a component. </summary>
- * <param = "_gc"> An instance of the component to be added. </param>
- */
-void gaussian_mixture::addComponent(const gaussian_component & _gc)
-{
-	assert(_gc.m.size() == dimension && "Attempt to add a GMM component of different dimension ");
-
-	if (components.size() < nMax) {
-
-		components.push_back(_gc);
-
-		if (!_gc.tag[0])
-			components.back().tag[0] = idCounter++;
-	}
-}
-
-/**
- * <summary> Random state vector for component initialization. </summary>
- * <param name = "_lowerBound"> The lower bound for the random vector. </param>
- * <param name = "_lowerBound"> The upper bound for the random vector. </param>
- * <returns> The random VectorXd with the specified boundraies. </returns>
- */
-VectorXd gaussian_mixture::randVec(const VectorXd & _lowerBound, const VectorXd & upperBound)
-{
-	{
-		size_t l = _lowerBound.size();
-		VectorXd result = VectorXd::Zero(l);
-
-		for (size_t i = 0; i < l; i++)
-			result(i) = (double)(upperBound(i) - _lowerBound(i)) * (double)rand() / (double)RAND_MAX - (upperBound(i) - _lowerBound(i)) / 2;
-
-		return result;
-	}
-}
-
-/**
- * <summary> Hellinger distance. </summary>
- * <param name = "_v1"> First mean. </param>
- * <param name = "_v1"> First mean's covariance. </param>
- * <param name = "_v1"> Second mean. </param>
- * <param name = "_v1"> Second mean's covariance. </param>
- * <returns> Hellinger distance. </returns>
- */
-inline double gaussian_mixture::hellinger(const VectorXd & _v1, const MatrixXd & _p1, const VectorXd & _v2, const MatrixXd & _p2)
-{
-	VectorXd vDiff = _v1 - _v2;
-	MatrixXd pSum = _p1 + _p2;
-	double epsilon = (-0.25 * vDiff.transpose() * pSum.inverse() * vDiff)(0, 0);
-	return 1 - sqrt(sqrt((_p1 * _p2).determinant()) / (0.5 * pSum).determinant()) * exp(epsilon);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -273,7 +142,7 @@ gaussian_component gaussian_component::operator+(const gaussian_component & _gc)
 }
 
 /**
- * <summary> Initializes an empty tag component. </summary>
+ * <summary> Initializes an empty tag comp onent. </summary>
  */
 void gaussian_component::initTag()
 {
@@ -303,20 +172,15 @@ std::ostream & operator<<(std::ostream & _os, const gaussian_component & _gc)
 		<< "[" << _gc.tag[2] << "] " << _gc.w << " " << "("<< _gc.m.transpose() << ")";
 }
 
-/**
-* <summary> Stream operator overloading for Gaussian Component. </summary>
-* <param name = "_os"> A reference to the output stream. </param>
-* <param name = "_gm"> Gaussian Mixture for the output. </param>
-*/
-std::ostream & operator<<(std::ostream & _os, const gaussian_mixture & _gm)
+std::ostream & operator<<(std::ostream & _os, const beta_gaussian_component & _gc)
 {
-	_os << _gm.size() << "/" << _gm.nMax << std::endl;
-
-	for (auto gc : _gm.components) 
-		_os << gc << std::endl;
-	
-	return _os;
+	// TODO: insert return statement here
+	return _os << _gc.tag[0] << " [" << _gc.tag[1] << "]"
+		<< "[" << _gc.tag[2] << "] " << _gc.w << " " << "(" << _gc.m.transpose() << ")" 
+		<< " Beta: " << _gc.u << " " << _gc.v;
 }
+
+
 
 /*
  * <summary> An empty constructor for the beta-Gaussian component structure. </summary>
@@ -354,12 +218,16 @@ beta_gaussian_component::beta_gaussian_component(const beta_gaussian_component &
 	v = _bgc.v;
 }
 
+/**
+ * <summary> Addition operator overload for beta-Gaussian component. </summary>
+ * <param name = "_bgc"> A constant reference to the beta-Gaussian component to add. </param>
+ */
 beta_gaussian_component beta_gaussian_component::operator+(const beta_gaussian_component & _bgc) const
 {
 	// I was confused how to call the parent operator properly and still preserve access to inital variables.
 	// So the first part is simply copied from the gaussian_component + operator.
 
-	assert(m.size() == _gc.m.size() && "Terms are of different dimensions.");
+	assert(m.size() == _bgc.m.size() && "Terms are of different dimensions.");
 
 	beta_gaussian_component result(*this);
 	VectorXd d = m - _bgc.m;
@@ -394,6 +262,10 @@ beta_gaussian_component beta_gaussian_component::operator+(const beta_gaussian_c
 	// Assign the beta parameters of the component with the highest weight
 	else
 	{
+		result.u = w * u + _bgc.w * _bgc.u;
+		result.v = w * v + _bgc.w * _bgc.v;
+
+		/*
 		if (w > _bgc.w)
 		{
 			result.u = u;
@@ -404,17 +276,112 @@ beta_gaussian_component beta_gaussian_component::operator+(const beta_gaussian_c
 			result.u = _bgc.u;
 			result.v = _bgc.v;
 		}
+		*/
 	}
 
 	return result;
 }
 
+/**
+ * <summary> Obtain the mean of the beta component with the specified parameters. </summary>
+ * <param name = "_u"> a (alpha) parameter of the beta distribution. </param>
+ * <param name = "_v"> b (beta) parameter of the beta distribution. </param>
+ * <returns> The mean of the beta distribution. </returns>
+ */
 double beta_gaussian_component::getBetaMean(const double & _u, const double & _v)
 {
 	return _u / (_u + _v);
 }
 
+/**
+* <summary> Obtain the variance of the beta component with the specified parameters. </summary>
+* <param name = "_u"> a (alpha) parameter of the beta distribution. </param>
+* <param name = "_v"> b (beta) parameter of the beta distribution. </param>
+* <param name = "_bMu"> Pre-computed mean of the beta distribution. </param>
+* <returns> The variance of the beta distribution. </returns>
+*/
 double beta_gaussian_component::getBetaVariance(const double & _u, const double & _v, const double & _bMu)
 {
 	return _bMu * (1 - _bMu) / (_u + _v + 1);
+}
+
+/**
+ * <summary> An empty constructor of the beta-Gaussian Mixture. </summary>
+ */
+beta_gaussian_mixture::beta_gaussian_mixture() : mixture() {}
+
+/**
+ *
+ */
+beta_gaussian_mixture::beta_gaussian_mixture(const size_t & _dim, const size_t & _nMax) : mixture(_dim, _nMax)
+{
+
+}
+
+/*
+ * <summary> Main constructor of the beta-Gaussian Mixture. </summary>
+ * <par> Initializes a beta-Gaussian mixture with a specified number of random beta-Gaussian components. 
+ * The alpha and beta parameters of the beta distribution are equal to one. </par>
+ *
+ * <param name = "_dim"> Dimensionality of the stored beta-Gaussian components. </param>
+ * <param name = "_nMax"> Maximum number of the beta-Gaussian componentes. </param>
+ * <param name = "_lBound"> Lower state bound (for random birth). </param>
+ * <param name = "_uBound"> Upper state bound (for random birth). </param>
+ * <param name = "_iCov"> Initial covariance matrix for the new components. </param>
+ * <param name = "_iWeight"> Initial weight for the new components. </param>
+ */
+beta_gaussian_mixture::beta_gaussian_mixture(const size_t & _dim, const size_t & _n, const size_t & _nMax, 
+	const VectorXd & _lBound, const VectorXd & _uBound, const MatrixXd & _iCov, const double & _iWeight)
+	: mixture(_dim, _n, _nMax)
+{
+	for (size_t i = 0; i < components.size(); i++)
+		components[i] = beta_gaussian_component(randVec(_lBound, _uBound), _iCov, _iWeight, idCounter++, 1, 1);
+}
+
+/**
+* <summary> Copy constructor of the beta-Gaussian Mixture. </summary>
+* <param name = "_gm"> An instance of beta-Gaussian Mixture to copy from. </param>
+*/
+beta_gaussian_mixture::beta_gaussian_mixture(const beta_gaussian_mixture & _bgm) : mixture (_bgm)
+{
+}
+
+void beta_gaussian_mixture::merge(const double & _mergeThreshold)
+{
+	std::vector<beta_gaussian_component> temp;
+
+	while (components.size() > 0) {
+
+		// Find the component with the maximum weight
+		auto max = std::max_element(components.begin(), components.end(),
+			[](const gaussian_component& a, const gaussian_component& b) { return a.w < b.w; });
+
+		temp.push_back(*max);
+		components.erase(max);
+
+		for (auto i = components.begin(); i != components.end();) {
+
+			double distance = hellinger(temp.back(), *i);
+
+			if (distance < _mergeThreshold) {
+				temp.back() = temp.back() + *i;
+				// The component with the highest weight keeps the track (???)
+				if (temp.back().tag[2] < i->tag[2]) {
+					//temp.back().tag[1] = i->tag[1];
+					temp.back().tag[2] = i->tag[2];
+				}
+
+				i = components.erase(i);
+			}
+			else
+				i++;
+		}
+	}
+
+	components = temp;
+}
+
+double beta_gaussian_mixture::betaHellinger(const beta_gaussian_component & _bgc1, const beta_gaussian_component & _bgc2)
+{
+	return 0.0;
 }

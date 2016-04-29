@@ -41,8 +41,8 @@ void ExtendedKalmanFilter::predict(gaussian_component & _gc)
 	}
 	else 
 	{
-		//_gc.m = F * _gc.m;		// Constant Velocity Mean Update
-		_gc.m = Astro::integrationPrediction(_gc.m, dt);
+		_gc.m = F * _gc.m;		// Constant Velocity Mean Update
+		//_gc.m = Astro::integrationPrediction(_gc.m, dt);
 		_gc.P = F * _gc.P * F.transpose() + Q;
 	}
 }
