@@ -202,13 +202,13 @@ inline void mixture<T>::prune(const double & _pruneThreshold)
 
 	double wSum = 0;
 
-	
+	/*
 	for (auto &c : components)	 
 		wSum += c.w;
 
 	for (auto &c : components)
 		c.w /= wSum;
-		
+		*/
 	
 }
 

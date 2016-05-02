@@ -5,6 +5,8 @@
 
 using namespace Eigen;
 
+// TODO: Make one common interface, e.g. BayesianFilter
+
 /**
  * <summary> Kalman Filter class. </summary>
  */
@@ -32,6 +34,7 @@ public:
 
 	static MatrixXd getCVF(const size_t& _dim, const double& _dt);
 	static MatrixXd getCVQ(const size_t& _dim, const double& _dt);
+	static VectorXd getCVq(const size_t& _dim, const double& _dt);
 
 };
 

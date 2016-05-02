@@ -115,3 +115,18 @@ MatrixXd KalmanFilter::getCVQ(const size_t& _dim, const double& _dt)
 
 	return q * q.transpose();
 }
+
+VectorXd KalmanFilter::getCVq(const size_t & _dim, const double & _dt)
+{
+	assert(_dim % 2 == 0 && "Works only for even-sized matrices");
+	VectorXd q(_dim);
+	double dt2 = _dt * _dt / 2;
+	size_t _dim2 = _dim / 2;
+
+	for (size_t i = 0; i < _dim / 2; i++) {
+		q(i) = dt2;
+		q(i + _dim2) = _dt;
+	}
+
+	return q;
+}

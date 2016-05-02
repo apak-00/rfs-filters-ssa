@@ -61,14 +61,14 @@ int main(int arcg, char** argv)
 	double dt = dt = 0.0704;
 	size_t sDim = 6, zDim = 3;
 
-	MatrixXd F = KalmanFilter::getCVF(sDim, dt), Q = KalmanFilter::getCVQ(sDim, dt) * 1000; // 2500 good
+	MatrixXd F = KalmanFilter::getCVF(sDim, dt), Q = KalmanFilter::getCVQ(sDim, dt) * 0.01; // 1000 2500 good
 	KalmanFilter kf(F, Q, dt);
 	ExtendedKalmanFilter ekf(F, Q, dt);
 
 	// sDim, zDim, dt, pS, pB, q, nB, bI, file
-	//testGMJoTT(ekf, sDim, zDim, dt, 1, 0.5, 0.01, 1, 1, "output_gmjott_6d.txt");
+	testGMJoTT(ekf, sDim, zDim, dt, 1, 0.5, 0.01, 1, 1, "output_gmjott_6d.txt");
 
-	testbGMJoTT(ekf, sDim, zDim, dt, 1, 1e-5, 0, 1, 1, "output_bgmjott_6d.txt", 0.2);
+	//testbGMJoTT(ekf, sDim, zDim, dt, 1, 1e-5, 0, 1, 1, "output_bgmjott_6d.txt", 0.2);
 
 	return 0; 
 }
@@ -92,10 +92,10 @@ void prepareVariables(const size_t& _sDim, const size_t& _zDim, const double& _d
 	else if (_sDim == 6 && _zDim == 3) 
 	{ // ECI state with RAZEL measurements
 	
-		R(0, 0) = 0.75;			// Range covariance
-		R(1, 1) = 0.05;		// Azimuth covariance
-		R(2, 2) = 0.05;		// Elevation covariance
-		R = R * 5;		// 12
+		R(0, 0) = 0.5;			// Range covariance 0.75
+		R(1, 1) = 0.075;		// Azimuth covariance	0.075
+		R(2, 2) = 0.075;		// Elevation covariance	0.075
+		R = R * 1;		// 12
 	}
 		
 	double pD = 0.8, lambda = 1, V = 1e-6;		// Probability of detection and clutter
@@ -198,7 +198,7 @@ void testGMJoTT(const T& filter, const size_t& _sDim, const size_t& _zDim, const
 		//cout << "\t\t" << Astro::razelToTEME(r, sensor.getPosition(), sensor.getDateJD(), sensor.getLOD(), 
 			//sensor.getXp(), sensor.getYp()).transpose() << endl;
 
-		bool c = true;
+		bool c = false;
 
 		// JoTT Filter
 		if (c)
@@ -524,8 +524,8 @@ void printMixtureAstroRAZEL(const T & _mixture, const Sensor & _sensor, const bo
 			<< "\t m: " << meanRAZEL(0) << " " << meanRAZEL(1) << " " << meanRAZEL(2) << " ";
 
 		// For BGM
-		if (_beta)
-			cout << "Beta: [" << c.u / (c.u + c.v) << "]";
+		//if (_beta)
+		//	cout << "Beta: [" << c.u / (c.u + c.v) << "]";
 
 		cout << endl;
 	} 

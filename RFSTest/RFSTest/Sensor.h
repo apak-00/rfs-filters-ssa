@@ -18,6 +18,7 @@ class Sensor
 {
 	friend class KalmanFilter;  // For ease of access during update step
 	friend class ExtendedKalmanFilter;
+	friend class UnscentedKalmanFilter;
 	friend class EKF;
 	friend class GMPHDFilter;
 
