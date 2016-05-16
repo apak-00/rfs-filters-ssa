@@ -2,6 +2,7 @@
 #include <Eigen/Dense>
 #include "KalmanFilter.h"
 #include "ExtendedKalmanFilter.h"
+#include "UnscentedKalmanFilter.h"
 #include "Sensor.h"
 #include "gmm.h"
 
@@ -121,7 +122,13 @@ public:
 				gaussian_component gct(_gmm[j]);
 				kf.update(gct, _sensor, i);
 				
-				double mah = _sensor.zMahalanobis(Astro::temeToSEZ(gct.m, _sensor.getPosition(), _sensor.getDateJD(), _sensor.getLOD(), _sensor.getXp(), _sensor.getYp()), i);
+				VectorXd razel = Astro::temeToRAZEL(gct.m, _sensor.getPosition(), _sensor.getDateJD(), _sensor.getLOD(), _sensor.getXp(), _sensor.getYp());
+				//cout << "gct teme : " << gct.m.transpose() << endl;
+				//cout << "gct razel:" << razel.transpose() << std::endl;
+
+				VectorXd sez = Astro::temeToSEZ(gct.m, _sensor.getPosition(), _sensor.getDateJD(), _sensor.getLOD(), _sensor.getXp(), _sensor.getYp());
+				double mah = _sensor.zMahalanobis(sez, i);
+				
 				auto qk = (1.0 / sqrt(pow(2.0 * M_PI, _sensor.getZDim()) * _sensor.getS().determinant())) * exp(-0.5 * mah);
 				gct.w *= qk / (_sensor.getLambda() * cz);
 

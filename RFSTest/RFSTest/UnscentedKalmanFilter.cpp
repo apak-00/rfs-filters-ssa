@@ -1,6 +1,8 @@
 #include "UnscentedKalmanFilter.h"
 #include "unscented_sampler.hpp"
 
+#include <iostream>
+
 using namespace Eigen;
 using namespace std;
 
@@ -13,6 +15,28 @@ UnscentedKalmanFilter::UnscentedKalmanFilter(const decltype(Q) _Q, const decltyp
 	
 }
 
+void get_points(const VectorXd &mean_, const MatrixXd &cov_, const double &w0_, vector<Eigen::VectorXd> &points, vector<double> &weights)
+{
+	size_t dim_point = mean_.rows();
+	size_t num_sigma = 2 * dim_point + 1;
+	points.resize(num_sigma);
+	weights.resize(num_sigma);
+	// Fill the sigma weights
+	double w1 = (1.0 - w0_) / (2.0 * (double)dim_point);
+	weights[0] = w0_;
+	points[0] = mean_;
+	fill(weights.begin() + 1, weights.end(), w1);
+	MatrixXd sqS = (dim_point / (1.0 - w0_) * cov_).llt().matrixL();
+	for (size_t i = 0; i < dim_point; i++)
+	{
+		points[1 + i] = mean_ + sqS.col(i);
+	}
+	for (size_t i = 0; i < dim_point; i++)
+	{
+		points[1 + i + dim_point] = mean_ - sqS.col(i);
+	}
+}
+
 void UnscentedKalmanFilter::predict(gaussian_component & _gc)
 {
 	vector<VectorXd> sigmaPoints, sigmaPointsPredicted;
@@ -21,7 +45,7 @@ void UnscentedKalmanFilter::predict(gaussian_component & _gc)
 
 	size_t L = _gc.m.size() * 2;
 	VectorXd augM(L), recM = VectorXd::Zero(_gc.m.size()), d(_gc.m.size());
-	MatrixXd augP(L, L), recP = VectorXd::Zero(_gc.P.rows(), _gc.P.cols());
+	MatrixXd augP(L, L), recP = MatrixXd::Zero(_gc.P.rows(), _gc.P.cols());
 
 	double kappa = 0.0, alpha = 1e-3, beta = 0;
 	double lambda = alpha * alpha * (L + kappa) - L;
@@ -31,7 +55,7 @@ void UnscentedKalmanFilter::predict(gaussian_component & _gc)
 	augP << _gc.P, MatrixXd::Zero(_gc.P.rows(), _gc.P.cols()), MatrixXd::Zero(_gc.P.rows(), _gc.P.cols()), Q;
 
 	// Derive the sigma points
-	sampler.get_points(augM, augP, 0.5, sigmaPoints, sigmaWeights);
+	get_points(augM, augP, 0.5, sigmaPoints, sigmaWeights);
 
 	sigmaPointsPredicted.resize(sigmaPoints.size());
 
@@ -49,11 +73,14 @@ void UnscentedKalmanFilter::predict(gaussian_component & _gc)
 
 	sigmaWeights[0] += 1 - alpha * alpha + beta;
 	
-	for (size_t i = 0; sigmaPoints.size(); i++)
+	for (size_t i = 0; i < sigmaPoints.size(); i++)
 	{
 		d = sigmaPointsPredicted[i] - recM;
 		recP += d * d.transpose() * sigmaWeights[i];
 	}
+
+	//std::cout << "P1: " << _gc.m.transpose() << std::endl;
+	//std::cout << "P2: " << recM.transpose() << std::endl;
 
 	// Reassign the values
 	_gc.m = recM;
@@ -66,37 +93,50 @@ void UnscentedKalmanFilter::update(gaussian_component & _gc, Sensor& _sensor, co
 	vector<double> sigmaWeights;
 	icl::standard_unscented_sampler<6, double> sampler;
 
-	size_t L = _gc.m.size() * + _sensor.getZDim();
+	size_t L = _gc.m.size() + _sensor.getZDim();
 	VectorXd augM(L), r(3),
 		recM = VectorXd::Zero(_gc.m.size()), dm(_gc.m.size()),				// Reconstructed mean and temporary difference vector
 		recZ = VectorXd::Zero(_sensor.getZDim()), dz(_sensor.getZDim());	// Reconstructed measuremnt and temporary difference vector
 		 
 	MatrixXd augP(L, L), 
-		recPZZ = VectorXd::Zero(_sensor.getZDim(), _sensor.getZDim()),
-		recPXZ = VectorXd::Zero(_gc.m.size(), _sensor.getZDim());
+		recPZZ = MatrixXd::Zero(_sensor.getZDim(), _sensor.getZDim()),
+		recPXZ = MatrixXd::Zero(_gc.m.size(), _sensor.getZDim());
 
 	double kappa = 0.0, alpha = 1e-3, beta = 0;
 
-	r << 0.75, 0.05, 0.05; r *= 5;		// Measurement noise vector
+	r << 0.5, 0.075, 0.075; r *= 1;		// Measurement noise vector
 
 	// Augment the state
+
+
 	augM << _gc.m, r;
 	augP << _gc.P, 
 		MatrixXd::Zero(_gc.P.rows(), _sensor.getR().cols()), 
 		MatrixXd::Zero(_sensor.getR().rows(), _gc.P.cols()), 
 		_sensor.getR();
 
+	//std::cout << augP << std::endl;
+
+	MatrixXd R = _sensor.getR();
+
 	// Get sigma points
-	sampler.get_points(_gc.m, _sensor.getR(), 0.5, sigmaPoints, sigmaWeights);
+	get_points(augM, augP, 0.5, sigmaPoints, sigmaWeights);
 
 	sigmaPointsProjected.resize(sigmaPoints.size());
+
 
 	// Project sigma points onto the measurement state
 	for (size_t i = 0; i < sigmaPoints.size(); i++)
 	{
 		sigmaPointsProjected[i] = Astro::temeToRAZEL(sigmaPoints[i].head(6), _sensor.getPosition(), _sensor.getDateJD(), _sensor.getLOD(), _sensor.getXp(), _sensor.getYp());
 		recZ += sigmaPointsProjected[i].head(3) * sigmaWeights[i];
+		
+		//cout << sigmaPoints[i].transpose() << endl << "---" << endl;
+		//cout << sigmaPointsProjected[i].transpose() << endl << endl;
 	}
+
+	_sensor.setS(recZ * recZ.transpose());
+
 
 	sigmaWeights[0] += 1 - alpha * alpha + beta;
 
@@ -109,10 +149,28 @@ void UnscentedKalmanFilter::update(gaussian_component & _gc, Sensor& _sensor, co
 		recPXZ += sigmaWeights[i] * dm * dz.transpose();
 	}
 
+
 	// Kalman Update
 	MatrixXd K = recPXZ * recPZZ.inverse();
 
+	VectorXd updM = _gc.m + K * (_sensor.z[_zNum] - recZ);
+	
+	//std::cout << "Z : " << recZ.transpose() << std::endl;
+	//std::cout << "U1: " << _gc.m.transpose() << std::endl;
+	//std::cout << "U2: " << updM.transpose() << std::endl;
+
+	/*
+	std::cout << "recPXZ : " << std::endl << recPXZ << endl;
+	std::cout << "recPZZ : " << std::endl << recPZZ << endl;
+	std::cout << "recPZZi : " << std::endl << recPZZ.inverse() << endl;
+	std::cout << "mult : " << std::endl << recPZZ * recPZZ.inverse() << endl;
+	*/
+
+	//cout << _gc.P << endl;
+
 	_gc.m += K * (_sensor.z[_zNum] - recZ);
 	_gc.P -= K * recPZZ * K.transpose();
+
+	//cout << _gc.P << endl;
 }
 

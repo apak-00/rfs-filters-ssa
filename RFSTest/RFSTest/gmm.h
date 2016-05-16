@@ -177,13 +177,10 @@ inline void mixture<T>::addComponent(const T & _component)
 {
 	assert(_component.m.size() == dimension && "Attempt to add a mixture component of different dimension ");
 
-	//if (components.size() < nMax) {
+	components.push_back(_component);
 
-		components.push_back(_component);
-
-		if (!_component.tag[0])
-			components.back().tag[0] = idCounter++;
-	//}
+	if (!_component.tag[0])
+		components.back().tag[0] = idCounter++;
 }
 /**
 * <summary> Pruning of the Gaussian Components with weights under the threshold. </summary>
@@ -196,19 +193,16 @@ inline void mixture<T>::prune(const double & _pruneThreshold)
 		[&_pruneThreshold](const T& c) { return c.w < _pruneThreshold; });
 	components.erase(pruned, components.end());
 
-	if (components.size() > nMax) {
+	if (components.size() > nMax) 
 		components.resize(nMax);
-	}
 
 	double wSum = 0;
 
-	/*
 	for (auto &c : components)	 
 		wSum += c.w;
 
 	for (auto &c : components)
 		c.w /= wSum;
-		*/
 	
 }
 
