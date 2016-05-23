@@ -110,7 +110,7 @@ MatrixXd KalmanFilter::getCVQ(const size_t& _dim, const double& _dt)
 
 	for (size_t i = 0; i < _dim / 2; i++) {
 		q(i) = dt2;
-		q(i + _dim2) = _dt * 0.001;
+		q(i + _dim2) = _dt;
 	}
 
 	return q * q.transpose();

@@ -21,6 +21,11 @@ template <typename T>
 void testGMJoTT(const T& _filter, const size_t& _sDim, const size_t& _zDim, const double& _dt, const double& _pS, const double& _pB,
 	const double& _q, const unsigned int& _nBirth, const double& _bIntensity, const string& _outputFileName);
 
+// Function for JoTT testing
+template <typename T>
+void testGMJoTTnc(const T& _filter, const size_t& _sDim, const size_t& _zDim, const double& _dt, const double& _pS, const double& _pB,
+	const double& _q, const unsigned int& _nBirth, const double& _bIntensity, const string& _outputFileName);
+
 template <typename T>
 void testbGMJoTT(const T& _filter, const size_t& _sDim, const size_t& _zDim, const double& _dt, const double& _pS, const double& _pB,
 	const double& _q, const unsigned int& _nBirth, const double& _bIntensity, const string& _outputFileName, const double& _epsilon);
@@ -43,13 +48,14 @@ vector<string>& split(const string &s, char delim, vector<string> &elements);
 MatrixXd getInitCovCV(const size_t& _dim, const double& _pCov, const double& _vCov);
 VectorXd readSimData();
 VectorXd readAdditionalClutterMeasurements();
+VectorXd readCFAR();
 bool has_suffix(const string& s, const string& suffix);
 
 Sensor sensor;
 gaussian_mixture gmm;
 beta_gaussian_mixture bgmm;
 string filename, filenameSim, filenameClutter;
-ifstream inputSim, inputClutter;
+ifstream inputSim, inputClutter, inputCFAR;
 VectorXd lBound, uBound;
 bool sim;
 string buffer;
@@ -66,16 +72,17 @@ int main(int arcg, char** argv)
 	double dt = dt = 0.0704;
 	size_t sDim = 6, zDim = 3;
 
-	MatrixXd F = KalmanFilter::getCVF(sDim, dt), Q = KalmanFilter::getCVQ(sDim, dt) * 1000; // 1000 0.01
+	MatrixXd F = KalmanFilter::getCVF(sDim, dt), Q = KalmanFilter::getCVQ(sDim, dt) * 0.01; // 1000 0.01
 	KalmanFilter kf(F, Q, dt);
 	ExtendedKalmanFilter ekf(F, Q, dt);
 	UnscentedKalmanFilter ukf(Q, dt);
 
 	// sDim, zDim, dt, pS, pB, q, nB, bI, file
-	//testGMJoTT(ekf, sDim, zDim, dt, 1, 0.5, 0.01, 1, 1, "Results/result_gmjott.csv");
-	//testGMJoTT(ekf, sDim, zDim, dt, 1, 0.5, 0.01, 1, 1, "output_gmjott_6d.txt");
+	// testGMJoTT(ekf, sDim, zDim, dt, 1, 0.5, 0.01, 1, 1, "Results/result_gmjott.csv");
 
-	testbGMJoTT(ekf, sDim, zDim, dt, 1, 1e-5, 0, 1, 1, "Results/result_bgmjott.csv", 0.2);
+	testGMJoTTnc(ekf, sDim, zDim, dt, 1, 0.5, 0.01, 1, 1, "Results/result_gmjott_nc.csv");
+
+	//testbGMJoTT(ekf, sDim, zDim, dt, 1, 1e-5, 0, 1, 1, "Results/result_bgmjott.csv", 0.2);
 
 	//tdmToCSV("C:\\Users\\Andrey\\Desktop\\CAMRa\\Thesis");
 	
@@ -104,7 +111,7 @@ void prepareVariables(const size_t& _sDim, const size_t& _zDim, const double& _d
 		R(0, 0) = 0.75;			// Range covariance 0.75
 		R(1, 1) = 0.075;		// Azimuth covariance	0.075
 		R(2, 2) = 0.075;		// Elevation covariance	0.075
-		R = R * 12;		// 1 12
+		R = R;				// 1 12
 	}
 		
 	double pD = 0.65, lambda = 1, V = 1e-6;		// Probability of detection and clutter
@@ -266,6 +273,150 @@ void testGMJoTT(const T& filter, const size_t& _sDim, const size_t& _zDim, const
 			if (estimates[0].kindaConverged)
 				cout << "S ";
 			else
+				cout << "E ";
+
+			if (estimates[0].kindaConverged)
+				cout << "Converged" << endl;
+		}
+		cout << endl;
+	}
+
+	outputFile.close();
+	inputClutter.close();
+}
+
+template<typename T>
+void testGMJoTTnc(const T & _filter, const size_t & _sDim, const size_t & _zDim, const double & _dt, const double & _pS, const double & _pB, const double & _q, const unsigned int & _nBirth, const double & _bIntensity, const string & _outputFileName)
+{
+	VectorXd info(11), infoTemp, bearing(2), dummy = VectorXd::Zero(_sDim);
+	vector<VectorXd> measurements;
+	vector<gaussian_component> estimates;
+	ofstream outputFile(_outputFileName); 				// Output file 
+	MatrixXd iCov = getInitCovCV(_sDim, 3600, 10);		// Initial covariance matrix
+	
+	inputCFAR.open("25544.txt");
+
+	// Misc
+	bool dtCalculated = false;
+	Astro::date datePrev, dateCurr;
+	double dt = 0.07, deg2rad = M_PI / 180.0;
+
+	// State, observation's dimensions and intial timestep
+	prepareVariables(_sDim, _zDim, _dt, 100);
+
+	GMJoTTFilter<ExtendedKalmanFilter> gmjottfilter(_filter, _nBirth, _bIntensity, _pS, iCov, lBound, uBound, _q, _pB);
+
+	// Main loop ------------------------------------------------------------------------
+	for (size_t i = 0; i < 10000; i++)
+	{
+		infoTemp = readCFAR();
+
+		if (!infoTemp.size())
+			break;
+
+		//cout << infoTemp.transpose() << endl;
+
+		info << 0, infoTemp(7), infoTemp(8), 0, 0, infoTemp.segment(1, 6);
+
+		if (info(1) > 360.0)
+			info(1) -= 360.0;
+		info(1) = 180.0 - info(1);		// Azimuth correction (?)
+
+		dateCurr = Astro::date((int)info(5), (int)info(6), (int)info(7),
+			(int)info(8), (int)info(9), info(10));
+
+		//cout << info.segment(0, 5).transpose() << endl;
+		//cout << info.segment(5, 6).transpose() << endl;
+
+		if (!dtCalculated)
+		{
+			datePrev = dateCurr;
+			dtCalculated = true;
+		}
+		else
+		{
+			dt = dateCurr - datePrev;
+			gmjottfilter.updateKFTimestep(dt);
+			datePrev = dateCurr;
+		}
+
+		measurements.clear();
+
+		for (size_t j = 0; j < infoTemp(9); j++) {
+			VectorXd temp(3);
+			temp << infoTemp(10 + j), info(1), info(2);
+			measurements.push_back(temp);
+		}
+
+		bearing << info(1), info(2);
+
+		sensor.setZ(measurements);
+		sensor.setBearing(bearing);
+
+		// JoTT Filter
+		//cout << endl << "\tStep: " << i << "\t " << r.transpose() << " " << "--------" << endl;
+		//cout << "\t\t" << Astro::razelToTEME(r, sensor.getPosition(), sensor.getDateJD(), sensor.getLOD(), 
+		//sensor.getXp(), sensor.getYp()).transpose() << endl;
+
+		bool c = false;
+
+		if (i >= 30) {
+			c = false;
+		}
+
+		// JoTT Filter
+		if (c)
+			cout << "\tSTEP " << i << " ----- " << info(0) << " " << info(1) << " " << info(2) << " -----" << endl;
+
+		// Predict
+		gmjottfilter.predict(gmm, sensor);
+		if (c)
+		{
+			cout << "\tPREDICT: q = " << gmjottfilter.getQ() << "\tEw = " << gmm.weightSum() << endl;
+			printMixtureAstroRAZEL(gmm, sensor, false);
+		}
+
+		// Update
+		gmjottfilter.update(gmm, sensor);
+		if (c)
+		{
+			cout << "\tUPDATE: q = " << gmjottfilter.getQ() << "\tEw = " << gmm.weightSum() << endl;
+			printMixtureAstroRAZEL(gmm, sensor, false);
+		}
+
+		if (c)
+			cout << "\tMERGE: " << gmm.size() << "->";
+		// Merge
+		gmm.merge(0.8);
+		if (c)
+		{
+			cout << gmm.size() << "\tEw = " << gmm.weightSum() << endl;
+			printMixtureAstroRAZEL(bgmm, sensor, true);
+		}
+
+		if (c)
+			cout << "\tPRUNE: " << gmm.size() << "->";
+		// Prune
+		gmm.prune(1e-8);
+		if (c)
+		{
+			cout << gmm.size() << "\tEw = " << gmm.weightSum() << endl;
+			printMixtureAstroRAZEL(gmm, sensor, true);
+		}
+
+		estimates = gmm.getEstimates(0.5);
+
+		outputLongGMJoTT(info, estimates, gmjottfilter, outputFile, sensor);
+		outputFile << endl;
+
+		// Console output
+		cout << i << " " << estimates.size() << "/" << gmm.size() << " ";
+
+		if (!estimates.empty()) {
+			cout << estimates[0].w << " [" << estimates[0].tag[1] << "][" << estimates[0].tag[2] << "] ";
+			if (estimates[0].kindaConverged)
+				cout << "S ";
+			else	VectorXd info, bearing(2), dummy = VectorXd::Zero(_sDim);
 				cout << "E ";
 
 			if (estimates[0].kindaConverged)
@@ -687,6 +838,22 @@ VectorXd readAdditionalClutterMeasurements()
 	getline(inputClutter, buffer);
 	vector<string> elements;
 	split(buffer, ' ', elements);
+	VectorXd result(elements.size());
+
+	if (elements.size() != 0)
+	{
+		for (size_t i = 0; i < elements.size(); i++)
+			result[i] = stod(elements[i]);
+	}
+
+	return result;
+}
+
+VectorXd readCFAR()
+{
+	getline(inputCFAR, buffer);
+	vector<string> elements;
+	split(buffer, ',', elements);
 	VectorXd result(elements.size());
 
 	if (elements.size() != 0)

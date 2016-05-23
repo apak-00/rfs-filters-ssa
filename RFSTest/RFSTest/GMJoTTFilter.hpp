@@ -71,30 +71,34 @@ public:
 			gc.w *= pS * q / qPred;
 		}
 
-		for (size_t i = 0; i < nBirthComponents; i ++)
-			birthRanges.push_back((double)(i+2)*200);
+		q = qPred;
 
-		if (nBirthComponents == 1)
-			birthRanges[0] = 1000;
-		
-		// Birth
-		for (size_t i = 0; (i < nBirthComponents) && (_gmm.size() < _gmm.nMax); i++) 
-		{	
-			// Uniform birth test
-			range = birthRanges[i];
-			
-			if (_gmm.dim() == 2)
-				birth << range, 0;
-			else if (_gmm.dim() == 6)
+		if (_sensor.getZ().size() != 0)
+		{
+			for (size_t i = 0; i < nBirthComponents; i++)
+				birthRanges.push_back((double)(i + 2) * 200);
+
+			if (nBirthComponents == 1)
+				birthRanges[0] = 1000;
+
+			// Birth
+			for (size_t i = 0; (i < nBirthComponents) && (_gmm.size() < _gmm.nMax); i++)
 			{
-				VectorXd m(_gmm.dim());
-				m << range, _sensor.getBearing(), 0, 0, 0;
-				birth = Astro::razelToTEME(m, _sensor.getPosition(), _sensor.getDateJD(), _sensor.getLOD(), _sensor.getXp(), _sensor.getYp());
+				// Uniform birth test
+				range = birthRanges[i];
+
+				if (_gmm.dim() == 2)
+					birth << range, 0;
+				else if (_gmm.dim() == 6)
+				{
+					VectorXd m(_gmm.dim());
+					m << range, _sensor.getBearing(), 0, 0, 0;
+					birth = Astro::razelToTEME(m, _sensor.getPosition(), _sensor.getDateJD(), _sensor.getLOD(), _sensor.getXp(), _sensor.getYp());
+				}
+				_gmm.addComponent(gaussian_component(birth, initialCovariance, initialWeight, _gmm.idCounter++));
 			}
-			_gmm.addComponent(gaussian_component(birth, initialCovariance, initialWeight, _gmm.idCounter++));
 		}
 
-		q = qPred;
 	}
 
 	/**
@@ -105,12 +109,16 @@ public:
 	*/
 	void update(gaussian_mixture & _gmm, Sensor & _sensor)
 	{
-		double cz = 1.0 / 231609.0 * 100000;
+		double cz = 1.0 / 231609.0 * 1e5;
 		//double cz = 0.1;// 1.0 / 231609.0;			// Temporary fix for cz
 
 		auto pD = _sensor.getPD();
 		size_t n0 = _gmm.size();
 		double delta_k = 0;
+
+		//for (size_t i = 0; i < _sensor.getZ().size(); i++)
+			//cout << _sensor.getZ().at(i).transpose() << " ";
+		//cout << endl;
 
 		// [2] Second term first, avoiding temporary variables
 		for (size_t i = 0; i < _sensor.getZ().size(); i++) {
@@ -122,9 +130,7 @@ public:
 				gaussian_component gct(_gmm[j]);
 				kf.update(gct, _sensor, i);
 				
-				VectorXd razel = Astro::temeToRAZEL(gct.m, _sensor.getPosition(), _sensor.getDateJD(), _sensor.getLOD(), _sensor.getXp(), _sensor.getYp());
-				//cout << "gct teme : " << gct.m.transpose() << endl;
-				//cout << "gct razel:" << razel.transpose() << std::endl;
+				//VectorXd razel = Astro::temeToRAZEL(gct.m, _sensor.getPosition(), _sensor.getDateJD(), _sensor.getLOD(), _sensor.getXp(), _sensor.getYp());
 
 				VectorXd sez = Astro::temeToSEZ(gct.m, _sensor.getPosition(), _sensor.getDateJD(), _sensor.getLOD(), _sensor.getXp(), _sensor.getYp());
 				double mah = _sensor.zMahalanobis(sez, i);
