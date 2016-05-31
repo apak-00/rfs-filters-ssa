@@ -30,21 +30,20 @@ void ExtendedKalmanFilter::predict(gaussian_component & _gc)
 	if (_gc.P.block<3, 3>(0, 0).determinant() < 56)
 		_gc.kindaConverged = true;
 	
-	if (_gc.kindaConverged)
+	if (false && _gc.kindaConverged)
 	{
 		VectorXd temp(_gc.m.size());
 		MatrixXd shepperd = Astro::getShepperdMatrix(_gc.m, dt, temp, Astro::MU_E);
-
 		_gc.m = temp;
 		//_gc.P = shepperd * _gc.P * shepperd.transpose() + Q;
-		_gc.P = F * _gc.P * F.transpose() + Q;
 	}
 	else 
 	{
 		//_gc.m = F * _gc.m;		// Constant Velocity Mean Update
 		_gc.m = Astro::integrationPrediction(_gc.m, dt);
-		_gc.P = F * _gc.P * F.transpose() + Q;
 	}
+
+	_gc.P = F * _gc.P * F.transpose() + Q;
 }
 
 /**

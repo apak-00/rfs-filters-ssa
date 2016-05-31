@@ -109,12 +109,12 @@ public:
 	*/
 	void update(gaussian_mixture & _gmm, Sensor & _sensor)
 	{
-		double cz = 1.0 / 231609.0 * 1e5;
+		double cz = 1.0 / 57903 * 21;
 		//double cz = 0.1;// 1.0 / 231609.0;			// Temporary fix for cz
 
 		auto pD = _sensor.getPD();
 		size_t n0 = _gmm.size();
-		double delta_k = 0;
+		double delta_k = 0; 
 
 		//for (size_t i = 0; i < _sensor.getZ().size(); i++)
 			//cout << _sensor.getZ().at(i).transpose() << " ";

@@ -12,7 +12,6 @@
 
 #include <dirent.h>
 
-
 using namespace std;
 using namespace Eigen;
 
@@ -66,21 +65,20 @@ int main(int arcg, char** argv)
 {
 	sim = false;
 	
-	filename = "Data/c20150126_1341_24277_TOD.tdm";
+	filename = "Data/c20140228_1010_19045_TOD.tdm";
 	filenameSim = "iss_sim.txt";
 	
 	double dt = dt = 0.0704;
 	size_t sDim = 6, zDim = 3;
 
-	MatrixXd F = KalmanFilter::getCVF(sDim, dt), Q = KalmanFilter::getCVQ(sDim, dt) * 0.01; // 1000 0.01
+	MatrixXd F = KalmanFilter::getCVF(sDim, dt), Q = KalmanFilter::getCVQ(sDim, dt) * 0.1;
 	KalmanFilter kf(F, Q, dt);
 	ExtendedKalmanFilter ekf(F, Q, dt);
 	UnscentedKalmanFilter ukf(Q, dt);
 
 	// sDim, zDim, dt, pS, pB, q, nB, bI, file
-	// testGMJoTT(ekf, sDim, zDim, dt, 1, 0.5, 0.01, 1, 1, "Results/result_gmjott.csv");
-
-	testGMJoTTnc(ekf, sDim, zDim, dt, 1, 0.5, 0.01, 1, 1, "Results/result_gmjott_nc.csv");
+	//testGMJoTT(ekf, sDim, zDim, dt, 1, 1e-5, 0.01, 1, 1, "Results/result_gmjott.csv");
+	testGMJoTTnc(ekf, sDim, zDim, dt, 1, 1e-5, 0.01, 1, 1, "Results/result_gmjott_nc.csv");
 
 	//testbGMJoTT(ekf, sDim, zDim, dt, 1, 1e-5, 0, 1, 1, "Results/result_bgmjott.csv", 0.2);
 
@@ -101,20 +99,18 @@ void prepareVariables(const size_t& _sDim, const size_t& _zDim, const double& _d
 
 	if (_sDim == 2 && _zDim == 1) 
 	{		// Range-only linear filtering
-		 
 		R << 1;										
 		H << 1, 0;									
 	}
 	else if (_sDim == 6 && _zDim == 3) 
 	{ // ECI state with RAZEL measurements
-	
-		R(0, 0) = 0.75;			// Range covariance 0.75
-		R(1, 1) = 0.075;		// Azimuth covariance	0.075
-		R(2, 2) = 0.075;		// Elevation covariance	0.075
-		R = R;				// 1 12
+		R(0, 0) = 0.071 * 0.071;			// Range covariance		0.75
+		R(1, 1) = 0.05;	 					// Azimuth covariance	0.075
+		R(2, 2) = 0.05;						// Elevation covariance	0.075
+		R *= 1;								
 	}
 		
-	double pD = 0.65, lambda = 1, V = 1e-6;		// Probability of detection and clutter
+	double pD = 0.7, lambda = 1, V = 1e-6;		// Probability of detection and clutter
 	sensor =  Sensor(_zDim, _sDim, pD, lambda, V, R, H);
 
 	VectorXd pos(3); 
@@ -294,7 +290,7 @@ void testGMJoTTnc(const T & _filter, const size_t & _sDim, const size_t & _zDim,
 	ofstream outputFile(_outputFileName); 				// Output file 
 	MatrixXd iCov = getInitCovCV(_sDim, 3600, 10);		// Initial covariance matrix
 	
-	inputCFAR.open("25544.txt");
+	inputCFAR.open("I:\\Raw Chilbolton\\Results\\100-5-10e-3\\radar-camra-felixx_20150224105654_39574_lev1.txt");
 
 	// Misc
 	bool dtCalculated = false;
@@ -307,7 +303,7 @@ void testGMJoTTnc(const T & _filter, const size_t & _sDim, const size_t & _zDim,
 	GMJoTTFilter<ExtendedKalmanFilter> gmjottfilter(_filter, _nBirth, _bIntensity, _pS, iCov, lBound, uBound, _q, _pB);
 
 	// Main loop ------------------------------------------------------------------------
-	for (size_t i = 0; i < 10000; i++)
+	for (size_t i = 0; i < 20000; i++)
 	{
 		infoTemp = readCFAR();
 
@@ -622,7 +618,7 @@ void outputLongGMJoTT(VectorXd & _info, vector<gaussian_component>& _estimates, 
 		_os << "," << _estimates[0].tag[1] << "," << _estimates[0].P.block<3, 3>(0, 0).determinant() << ","
 		<< _estimates[0].P.block<3, 3>(3, 3).determinant() << ",";
 	else
-		_os << "0, 0, 0";
+		_os << ", 0, 0, 0,";
 
 	VectorXd sensorPosTEME = Astro::ecefToTEME(Astro::geodeticToECEF(_sensor.getPosition()), _sensor.getDateJD(), _sensor.getLOD(), _sensor.getXp(), _sensor.getYp());
 
