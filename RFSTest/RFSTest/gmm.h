@@ -74,6 +74,8 @@ struct gaussian_component {
 	/* Miscellaneous */
 	void initTag();
 	void initTag(const int& id);
+
+	static VectorXd getEmptyInfo() { return VectorXd::Zero(11); }
 };
 
 std::ostream& operator << (std::ostream& _os, const gaussian_component& _gc);
@@ -110,6 +112,8 @@ struct beta_gaussian_component : gaussian_component {
 
 	static double getBetaMean(const double& _u, const double & _v);
 	static double getBetaVariance(const double& _u, const double& _v, const double& _bMu);
+
+	static VectorXd getEmptyInfo() { return VectorXd::Zero(14); }
 };
 
 std::ostream& operator << (std::ostream& _os, const beta_gaussian_component& _gc);

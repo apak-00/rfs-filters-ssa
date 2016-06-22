@@ -1,24 +1,18 @@
 #pragma once
 #include <Eigen/Dense>
-#include "KalmanFilter.h"
-#include "ExtendedKalmanFilter.h"
-#include "UnscentedKalmanFilter.h"
+#include "GMRFSFilter.h"
 #include "Sensor.h"
 #include "gmm.h"
 
-#include <iostream>
-
 /*
-* <summary> Gaussian Mixture Joint Target Detection and Tracking class. </summary>
+* <summary> Gaussian Mixture Joint Target Detection and Tracking Filter class. </summary>
 */
-template<typename T>
-class GMJoTTFilter
+class GMJoTTFilter : public GMRFSFilter<gaussian_mixture>
 {
 protected:
 	double q;						// Probability of target existence
 
-	T kf;							// Kalman Filter for single component
-	unsigned int nBirthComponents;	// Number of birth components
+	size_t nBirthComponents;	// Number of birth components
 	double birthIntensity;			// Birth intensity
 	double pS;						// Probability of target survival
 	double pB;						// Probabilirt of target birth
@@ -30,7 +24,7 @@ protected:
 
 public:
 	auto getQ() { return q; }
-	auto getKFTimestep() { return kf.getTimestep(); }
+	auto getT() { return filter->getT(); }
 	
 	/**
 	* <summary> Main constructor of the JoTT filter class. </summary>
@@ -45,10 +39,13 @@ public:
 	* <param name = "_q"> Initial probability of target existence. </param>
 	* <param name = "_pB"> Probability of target birth. </param>
 	*/
-	GMJoTTFilter(const T& _kf, const unsigned int & _nBirthComponents, const double & _birthIntensity,
+	GMJoTTFilter(std::shared_ptr<KalmanFilter> _kf, const size_t& _nBirthComponents, const double & _birthIntensity,
 		const double & _pS, const MatrixXd & _iCov, const VectorXd & _lBound, const VectorXd & _uBound, const double & _q, const double& _pB) :
-		kf(_kf), nBirthComponents(_nBirthComponents), birthIntensity(_birthIntensity), pS(_pS), initialCovariance(_iCov),
-		lowerBound(_lBound), upperBound(_uBound), q(_q), pB(_pB) {}
+		nBirthComponents(_nBirthComponents), birthIntensity(_birthIntensity), pS(_pS), initialCovariance(_iCov),
+		lowerBound(_lBound), upperBound(_uBound), q(_q), pB(_pB) 
+	{
+		filter = _kf;
+	}
 
 	/**
 	* <summary> Prediction step of the GM JoTT filter. </summary>
@@ -62,12 +59,12 @@ public:
 		// Probability of target existence
 		double qPred = pB * (1 - q) + pS * q, range;
 		double initialWeight = (birthIntensity / nBirthComponents) * pB * (1 - q) / qPred;
-		vector<double> birthRanges;
+		std::vector<double> birthRanges;
 		VectorXd birth(_gmm.dim());
 
 		// Predict existing components
 		for (auto &gc : _gmm.components) {
-			kf.predict(gc);
+			filter->predict(gc);
 			gc.w *= pS * q / qPred;
 		}
 
@@ -128,7 +125,7 @@ public:
 			for (size_t j = 0; j < n0; j++) {
 
 				gaussian_component gct(_gmm[j]);
-				kf.update(gct, _sensor, i);
+				filter->update(gct, _sensor, i);
 				
 				//VectorXd razel = Astro::temeToRAZEL(gct.m, _sensor.getPosition(), _sensor.getDateJD(), _sensor.getLOD(), _sensor.getXp(), _sensor.getYp());
 
@@ -167,14 +164,5 @@ public:
 					else
 						_gmm.components[i].initTag(_gmm.idCounter++);
 	}
-
-	/**
-	* <summary> Updates the timestep of the Kalman Filter. </summary>
-	*/
-	void updateKFTimestep(const double & _t)
-	{
-		kf.setT(_t);
-	}
-
 };
 

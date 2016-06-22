@@ -1,23 +1,18 @@
 #pragma once
 #include <Eigen/Dense>
-#include "KalmanFilter.h"
-#include "ExtendedKalmanFilter.h"
+#include "GMRFSFilter.h"
 #include "Sensor.h"
 #include "gmm.h"
-
-#include <iostream>
 
 /*
 * <summary> Beta-Gaussian Mixture Joint Target Detection and Tracking class. </summary>
 */
-template<typename T>
-class bGMJoTTFilter
+class BGMJoTTFilter : public GMRFSFilter<beta_gaussian_mixture>
 {
 protected:
 	double q;						// Probability of target existence
 
-	T kf;							// Kalman Filter for single component
-	unsigned int nBirthComponents;	// Number of birth components
+	size_t nBirthComponents;	// Number of birth components
 	double birthIntensity;			// Birth intensity
 	double pS;						// Probability of target survival
 	double pB;						// Probabilirt of target birth
@@ -31,7 +26,6 @@ protected:
 
 public:
 	auto getQ() { return q; }
-	auto getKFTimestep() { return kf.getTimestep(); }
 
 	/**
 	* <summary> Main constructor of the JoTT filter class. </summary>
@@ -46,10 +40,13 @@ public:
 	* <param name = "_q"> Initial probability of target existence. </param>
 	* <param name = "_pB"> Probability of target birth. </param>
 	*/
-	bGMJoTTFilter(const T& _kf, const unsigned int & _nBirthComponents, const double & _birthIntensity,
+	BGMJoTTFilter(std::shared_ptr<KalmanFilter> _kf, const size_t & _nBirthComponents, const double & _birthIntensity,
 		const double & _pS, const MatrixXd & _iCov, const VectorXd & _lBound, const VectorXd & _uBound, const double & _q, const double& _pB, 
-		const double& _epsilon) : kf(_kf), nBirthComponents(_nBirthComponents), birthIntensity(_birthIntensity), pS(_pS), initialCovariance(_iCov),
-		lowerBound(_lBound), upperBound(_uBound), q(_q), pB(_pB), epsilon(_epsilon) {}
+		const double& _epsilon) : nBirthComponents(_nBirthComponents), birthIntensity(_birthIntensity), pS(_pS), initialCovariance(_iCov),
+		lowerBound(_lBound), upperBound(_uBound), q(_q), pB(_pB), epsilon(_epsilon) 
+	{
+		filter = _kf;
+	}
 
 	/**
 	* <summary> Prediction step of the GM JoTT filter. </summary>
@@ -63,13 +60,13 @@ public:
 		// Probability of target existence
 		double qPred = pB * (1 - q) + pS * q, range;
 		double initialWeight = (birthIntensity / nBirthComponents) * pB * (1 - q) / qPred;
-		vector<double> birthRanges;
+		std::vector<double> birthRanges;
 		VectorXd birth(_bgmm.dim());
 
 		// Predict existing components
 		for (auto &bgc : _bgmm.components) 
 		{
-			kf.predict(bgc);
+			filter->predict(bgc);
 			bgc.w *= pS * q / qPred;
 		}
 
@@ -77,8 +74,7 @@ public:
 			birthRanges.push_back((double)(i + 2) * 200);
 
 		if (nBirthComponents == 1)
-			birthRanges[0] = 1000;
-			//+ (double)(500) * (double)rand() / (double)RAND_MAX - 250;
+			birthRanges[0] = 1000; //+ (double)(500) * (double)rand() / (double)RAND_MAX - 250;
 
 		// Birth
 		for (size_t i = 0; (i < nBirthComponents); i++)
@@ -102,7 +98,7 @@ public:
 
 		// Update the beta components
 		for (auto &bgc : _bgmm.components)
-			updateBetaComponent(bgc, kf.getTimestep() * 0.01);
+			updateBetaComponent(bgc, filter->getT() * 0.01);
 	}
 
 	/**
@@ -134,12 +130,13 @@ public:
 	void update(beta_gaussian_mixture & _bgmm, Sensor & _sensor)
 	{
 		//double cz = 1.0 / 26678;
-		double cz = 1.0 / 231609.0 * 100;	// Good
+		//double cz = 1.0 / 231609.0 * 100;	// Good
 		//double cz = 0.1;// 1.0 / 231609.0;			// Temporary fix for cz
+		double cz = 1.0 / 57903 * 21;
 
 		size_t n0 = _bgmm.size();
 		double delta_k = 0, pDWeightedSum = 0;
-		vector<double> pD;		// Vector instead of single value for GMJoTT
+		std::vector<double> pD;		// Vector instead of single value for GMJoTT
 		pD.resize(n0);
 
 		for (size_t i = 0; i < n0; i++) 
@@ -157,7 +154,7 @@ public:
 			for (size_t j = 0; j < n0; j++) {
 
 				beta_gaussian_component bgct(_bgmm[j]);
-				kf.update(bgct, _sensor, i);
+				filter->update(bgct, _sensor, i);
 
 				double mah = _sensor.zMahalanobis(Astro::temeToSEZ(bgct.m, _sensor.getPosition(), _sensor.getDateJD(), _sensor.getLOD(), _sensor.getXp(), _sensor.getYp()), i);
 				auto qk = (1.0 / sqrt(pow(2.0 * M_PI, _sensor.getZDim()) * _sensor.getS().determinant())) * exp(-0.5 * mah);
@@ -203,14 +200,6 @@ public:
 						_bgmm.components[j].initTag(_bgmm.idCounter++);
 					else
 						_bgmm.components[i].initTag(_bgmm.idCounter++);
-	}
-
-	/**
-	* <summary> Updates the timestep of the Kalman Filter. </summary>
-	*/
-	void updateKFTimestep(const double & _t)
-	{
-		kf.setT(_t);
 	}
 
 };

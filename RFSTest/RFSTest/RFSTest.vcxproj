@@ -20,15 +20,18 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Astro.h" />
-    <ClInclude Include="bGMJoTTFilter.hpp" />
+    <ClInclude Include="BGMJoTTFilter.hpp" />
+    <ClInclude Include="Debug.h" />
     <ClInclude Include="ExtendedKalmanFilter.h" />
     <ClInclude Include="CFARProcessor.h" />
     <ClInclude Include="GMJoTTFilter.hpp" />
     <ClInclude Include="gmm.h" />
     <ClInclude Include="GMPHDFilter.h" />
+    <ClInclude Include="GMRFSFilter.h" />
+    <ClInclude Include="IOHelpers.h" />
     <ClInclude Include="KalmanFilter.h" />
     <ClInclude Include="Sensor.h" />
-    <ClInclude Include="TDMReader.h" />
+    <ClInclude Include="SingleTargetFilter.h" />
     <ClInclude Include="UnscentedKalmanFilter.h" />
     <ClInclude Include="unscented_sampler.hpp" />
   </ItemGroup>
@@ -38,15 +41,15 @@
     <ClCompile Include="CFARProcessor.cpp" />
     <ClCompile Include="gmm.cpp" />
     <ClCompile Include="GMPHDFilter.cpp" />
+    <ClCompile Include="IOHelpers.cpp" />
     <ClCompile Include="KalmanFilter.cpp" />
     <ClCompile Include="Sensor.cpp" />
     <ClCompile Include="Source.cpp" />
-    <ClCompile Include="TDMReader.cpp" />
     <ClCompile Include="UnscentedKalmanFilter.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="config.yaml" />
     <None Include="packages.config" />
-    <None Include="params_bgmjott.yaml" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{39EC7227-1BC7-479E-8DE7-5CA192A6B572}</ProjectGuid>
@@ -106,7 +109,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);$(LIB_PATH);$(YAML_PATH)</IncludePath>
+    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);$(LIB_PATH);$(YAML_PATH)\include</IncludePath>
     <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);$(NETFXKitsDir)Lib\um\x64;</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -116,7 +119,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);$(LIB_PATH)</IncludePath>
+    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);$(LIB_PATH);$(YAML_PATH)\include</IncludePath>
     <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);$(NETFXKitsDir)Lib\um\x64;</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -148,7 +151,8 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;libyaml-cppmdd.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(YAML_PATH)\build\Debug</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -190,9 +194,8 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>
-      </AdditionalLibraryDirectories>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;libyaml-cppmd.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(YAML_PATH)\build\Release</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

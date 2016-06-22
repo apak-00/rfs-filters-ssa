@@ -3,29 +3,37 @@
 
 using namespace Eigen;
 
+/**
+ * <summary> A namespace containing helper functions for astrodynamic operations. </summary>
+ */
 namespace Astro {
 
 	/** Temporary structure for storing the date and time with millisecond precision **/
 	struct date {
 
-		int year, month, day, hour, min;
+		enum OUTPUT_TYPE { CSV };
+		int outputType = CSV;
+
+		int year, month, day, hour, minute;
 		double sec;
 
-		date() : year(0), month(0), day(0), hour(0), min(0), sec(0) {}
+		date() : year(0), month(0), day(0), hour(0), minute(0), sec(0) {}
 		date(const int& _yy, const int& _mm, const int& _dd, const int& _hr, const int& _nMin, const double& _nSec) :
-			year(_yy), month(_mm), day(_dd), hour(_hr), min(_nMin), sec(_nSec) {}
-		date(const date& _d) : year(_d.year), month(_d.month), day(_d.day), hour(_d.hour), min(_d.min), sec(_d.sec) {}
+			year(_yy), month(_mm), day(_dd), hour(_hr), minute(_nMin), sec(_nSec) {}
+		date(const date& _d) : year(_d.year), month(_d.month), day(_d.day), hour(_d.hour), minute(_d.minute), sec(_d.sec) {}
 
 		// TODO: Fix
 		// Temporarily only HMS part is used to calculate the number of milliseconds for the difference
 		double toMS() const {
-			return sec + min * 60.0 + hour * 3600.0;
+			return sec + minute * 60.0 + hour * 3600.0;
 		}
 
 		double operator- (const date& _d) const {
 			return toMS() - _d.toMS();
 		}
 	};
+
+	std::ostream& operator << (std::ostream& _os, const date& _d);
 
 	const double R_EQ = 6378.137;				// Major semiaxis (equatorial radius)
 	const double E = 8.1819190842622e-2;		// First eccentricity

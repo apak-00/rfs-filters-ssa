@@ -6,37 +6,53 @@
 using namespace Eigen;
 using namespace std;
 
-UnscentedKalmanFilter::UnscentedKalmanFilter() : KalmanFilter()
-{
-}
+/*
+ * <summary> An empty constructor of the UnscentedKalmanFilter class. </summary>
+ */
+UnscentedKalmanFilter::UnscentedKalmanFilter() : KalmanFilter() {}
 
-UnscentedKalmanFilter::UnscentedKalmanFilter(const decltype(Q) _Q, const decltype(dt) _dt) : KalmanFilter(MatrixXd::Identity(_Q.rows(), _Q.cols()), _Q, _dt) 
-{
-	
-}
+/*
+ * <summary> Default constructor of the UnscentedKalmanFilter class. </summary>
+ * <param name = "_Q"> State transition noise matrix. </param>
+ * <param name = "_dt"> Timestep. Defaults to zero. </param>
+ */
+UnscentedKalmanFilter::UnscentedKalmanFilter(const decltype(Q) _Q, const decltype(dt) _dt) : 
+	KalmanFilter(MatrixXd::Identity(_Q.rows(), _Q.cols()), _Q, _dt) {}
 
-void get_points(const VectorXd &mean_, const MatrixXd &cov_, const double &w0_, vector<Eigen::VectorXd> &points, vector<double> &weights)
+/*
+ * <summary> Get the sigma points and the corresponding weights for the specified state vector and its covariance matrix. </summary>
+ * <param name = "_mean"> State vector. </mean>
+ * <param name = "_cov"> State vector covariance </mean>
+ * <param name = "_w0"> Zero weight. </mean>
+ * <param name = "_points"> Output sigma points. </param>
+ * <param name = "_weights"> Output sigma points' weights. </param>
+ */
+void get_points(const VectorXd &_mean, const MatrixXd &_cov, const double &_w0, vector<Eigen::VectorXd>& _points, vector<double>& _weights)
 {
-	size_t dim_point = mean_.rows();
+	size_t dim_point = _mean.rows();
 	size_t num_sigma = 2 * dim_point + 1;
-	points.resize(num_sigma);
-	weights.resize(num_sigma);
+	_points.resize(num_sigma);
+	_weights.resize(num_sigma);
 	// Fill the sigma weights
-	double w1 = (1.0 - w0_) / (2.0 * (double)dim_point);
-	weights[0] = w0_;
-	points[0] = mean_;
-	fill(weights.begin() + 1, weights.end(), w1);
-	MatrixXd sqS = (dim_point / (1.0 - w0_) * cov_).llt().matrixL();
+	double w1 = (1.0 - _w0) / (2.0 * (double)dim_point);
+	_weights[0] = _w0;
+	_points[0] = _mean;
+	fill(_weights.begin() + 1, _weights.end(), w1);
+	MatrixXd sqS = (dim_point / (1.0 - _w0) * _cov).llt().matrixL();
 	for (size_t i = 0; i < dim_point; i++)
 	{
-		points[1 + i] = mean_ + sqS.col(i);
+		_points[1 + i] = _mean + sqS.col(i);
 	}
 	for (size_t i = 0; i < dim_point; i++)
 	{
-		points[1 + i + dim_point] = mean_ - sqS.col(i);
+		_points[1 + i + dim_point] = _mean - sqS.col(i);
 	}
 }
 
+/*
+ * <summary> Prediction step of the UnscentedKalmanFilter. </summary>
+ * <param name = "_gc"> A Gaussian component to be predicted. </param>
+ */ 
 void UnscentedKalmanFilter::predict(gaussian_component & _gc)
 {
 	vector<VectorXd> sigmaPoints, sigmaPointsPredicted;
@@ -87,6 +103,12 @@ void UnscentedKalmanFilter::predict(gaussian_component & _gc)
 	_gc.P = recP;
 }
 
+/*
+ * <summary> Update step of the UnscentedKalmanFilter. </summary>
+ * <param name = "_gc"> A Gaussian component to be updated. </param>
+ * <param name = "_sensor"> Reference to the sensor class containing the measurements. </param>
+ * <param name = "_zNum"> Mesruement number (for multiple-measurement case). </param>
+ */
 void UnscentedKalmanFilter::update(gaussian_component & _gc, Sensor& _sensor, const size_t& _zNum)
 {
 	vector<VectorXd> sigmaPoints, sigmaPointsProjected;

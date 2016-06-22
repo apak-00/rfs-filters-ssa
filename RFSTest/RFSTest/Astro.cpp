@@ -101,6 +101,21 @@ void integrateOrbit(const state_type &x, state_type &dxdt, const double /* t */)
 namespace Astro 
 {
 
+	/*
+	 * <summary> Output stream operator overload for the date struct. </summary>
+	 * <par> Output format depends on the specified enum. </par>
+	 * <param name = "_os"> A reference to the output stream. </param>
+	 */
+	std::ostream & operator<<(std::ostream & _os, const date & _d)
+	{
+		switch (_d.outputType) {
+		case 0: _os << _d.year << "," << _d.month << "," << _d.day << "," << _d.hour << "," << _d.minute << "," << _d.sec;
+			break;
+		}
+		return _os;
+
+	}
+
 	/**
 	* <summary> Range, Azimuth, Elevation to Cartesian South-East-Zenith (SEZ) system. </summary>
 	* <par> Similar to MATLAB sph2cart. </par>
@@ -592,7 +607,7 @@ namespace Astro
 		B = 2 - t + floor(t / 4);
 
 		C = (((_date.sec) / 60.0
-			+ (double)_date.min) / 60.0
+			+ (double)_date.minute) / 60.0
 			+ (double)_date.hour) / 24.0;
 
 		JD = floor(365.25 * (year + 4716.0)) + floor(30.6001 * (month + 1))
@@ -771,7 +786,7 @@ namespace Astro
 
 		// Initialization
 		double u = 0, deltaU = 0, P = 2 * M_PI * _mu * pow(beta, -1.5);
-		int n = floor(1.0 / P * (_t + P / 2.0 - 2.0 * nu0 / beta));
+		int n = (int) floor(1.0 / P * (_t + P / 2.0 - 2.0 * nu0 / beta));
 		deltaU = 2.0 * n * M_PI * pow(beta, -2.5);
 
 		double t = 0, dt = t - _t, U, U0, U1, U2, U3, r;;

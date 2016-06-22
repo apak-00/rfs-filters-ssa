@@ -12,9 +12,12 @@
  * <param name = "_lBound"> Lower state bound for random state generation. </param>
  * <param name = "_uBound"> Upper state bound for random state generation. </param>
  */
-GMPHDFilter::GMPHDFilter(const KalmanFilter & _kf, const unsigned int & _nBirthComponents, const double & _birthIntensity,
-	const double & _pS, const MatrixXd& _iCov, const VectorXd & _lBound, const VectorXd & _uBound) : kf(_kf), nBirthComponents(_nBirthComponents),
-	birthIntensity(_birthIntensity), pS(_pS), initialCovariance(_iCov), lowerBound(_lBound), upperBound(_uBound) {}
+GMPHDFilter::GMPHDFilter(std::shared_ptr<KalmanFilter> _kf, const unsigned int & _nBirthComponents, const double & _birthIntensity,
+	const double & _pS, const MatrixXd& _iCov, const VectorXd & _lBound, const VectorXd & _uBound) : nBirthComponents(_nBirthComponents),
+	birthIntensity(_birthIntensity), pS(_pS), initialCovariance(_iCov), lowerBound(_lBound), upperBound(_uBound) 
+	{
+		filter = _kf;
+	}
 
 /**
  * <summary> Prediction step of the GM PHD filter. </summary>
@@ -24,7 +27,7 @@ void GMPHDFilter::predict(gaussian_mixture & _gmm)
 {
 	// Prediction for all of the components
 	for (auto &gc : _gmm.components) {
-		kf.predict(gc);
+		filter->predict(gc);
 		gc.w *= pS;
 	}
 
@@ -55,7 +58,7 @@ void GMPHDFilter::update(gaussian_mixture& _gmm, Sensor & _sensor)
 		for (size_t j = 0; j < n0; j++) {
 
 			gaussian_component gct(_gmm[j]);
-			kf.update(gct, _sensor, i);
+			filter->update(gct, _sensor, i);
 
 			// GMPHD paper, formula 20, likelihood (???)
 			auto q = (1 / sqrt(pow(2 * M_PI, _sensor.getZDim()) * _sensor.getS().determinant())) * exp(-0.5 * _sensor.zMahalanobis(gct.m,i));
@@ -95,12 +98,4 @@ void GMPHDFilter::update(gaussian_mixture& _gmm, Sensor & _sensor)
 					gci.initTag(_gmm.componentCounter++);
 			}
 	*/
-}
-
-/**
- * <summary> Updates the timestep of the Kalman Filter. </summary>
- */
-void GMPHDFilter::updateKFTimestep(const double & _t)
-{
-	kf.setT(_t);
 }

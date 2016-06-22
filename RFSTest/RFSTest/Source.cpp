@@ -1,168 +1,139 @@
 #include <iostream>
+#include <fstream>
+#include <iomanip>		
+#include <memory>
 #include <Eigen/Core>
+#include <yaml-cpp/yaml.h>
 
+#include <ctime>
+#include <numeric>
+
+#include "Debug.h"
 #include "Astro.h"
 #include "GMPHDFilter.h"
 #include "GMJoTTFilter.hpp"
-#include "bGMJoTTFilter.hpp"
-#include "TDMReader.h"
+#include "BGMJoTTFilter.hpp"
 
-#include <fstream>
-#include <iomanip>
+#include "ExtendedKalmanFilter.h"
+#include "UnscentedKalmanFilter.h"
 
-#include <dirent.h>
+#include "IOHelpers.h"
 
 using namespace std;
 using namespace Eigen;
+using namespace IOHelpers;
 
 // Function for JoTT testing
-template <typename T>
-void testGMJoTT(const T& _filter, const size_t& _sDim, const size_t& _zDim, const double& _dt, const double& _pS, const double& _pB,
-	const double& _q, const unsigned int& _nBirth, const double& _bIntensity, const string& _outputFileName);
+void testFilter(parameters& _p);
+template <typename MultiTargetFilter, typename Mixture>
+void runFilter(MultiTargetFilter& _filter, Sensor& _sensor, Mixture& _mixture, parameters& _p);
 
-// Function for JoTT testing
-template <typename T>
-void testGMJoTTnc(const T& _filter, const size_t& _sDim, const size_t& _zDim, const double& _dt, const double& _pS, const double& _pB,
-	const double& _q, const unsigned int& _nBirth, const double& _bIntensity, const string& _outputFileName);
-
-template <typename T>
-void testbGMJoTT(const T& _filter, const size_t& _sDim, const size_t& _zDim, const double& _dt, const double& _pS, const double& _pB,
-	const double& _q, const unsigned int& _nBirth, const double& _bIntensity, const string& _outputFileName, const double& _epsilon);
-
-void testTransformations();
-void printVector(ofstream& _os, const VectorXd& v);
-
-template<typename T>
-void printMixtureAstroRAZEL(const T& _mixture, const Sensor& _sensor, const bool& _beta);
-void prepareVariables(const size_t& _sDim, const size_t& _zDim, const double& _dt, const size_t& _gmmSize);
-void testSTM();
-void tdmToCSV(const string& _s);
-
-void outputShortGMJoTT(VectorXd& _info, vector<gaussian_component>& _estimates, GMJoTTFilter<ExtendedKalmanFilter>& _filter, ofstream& _os);
-void outputLongGMJoTT(VectorXd& _info, vector<gaussian_component>& _estimates, GMJoTTFilter<ExtendedKalmanFilter>& _filter, ofstream& _os, Sensor& _sensor);
-void outputShortBGMJoTT(VectorXd& _info, vector<beta_gaussian_component>& _estimates, bGMJoTTFilter<ExtendedKalmanFilter>& _filter, ofstream& _os);
-void outputLongBGMJoTT(VectorXd& _info, vector<beta_gaussian_component>& _estimates, bGMJoTTFilter<ExtendedKalmanFilter>& _filter, ofstream& _os, Sensor& _sensor);
-
-vector<string>& split(const string &s, char delim, vector<string> &elements);
-MatrixXd getInitCovCV(const size_t& _dim, const double& _pCov, const double& _vCov);
-VectorXd readSimData();
-VectorXd readAdditionalClutterMeasurements();
-VectorXd readCFAR();
-bool has_suffix(const string& s, const string& suffix);
-
-Sensor sensor;
-gaussian_mixture gmm;
-beta_gaussian_mixture bgmm;
-string filename, filenameSim, filenameClutter;
-ifstream inputSim, inputClutter, inputCFAR;
-VectorXd lBound, uBound;
-bool sim;
-string buffer;
-
-// 7000 4643 7088 6000+(Sim)
 // Test
 int main(int arcg, char** argv) 
-{
-	sim = false;
-	
-	filename = "Data/c20140228_1010_19045_TOD.tdm";
-	filenameSim = "iss_sim.txt";
-	
-	double dt = dt = 0.0704;
-	size_t sDim = 6, zDim = 3;
+{	
+	string filename_params = "config.yaml";
+	parameters p = readParametersYAML(filename_params);
+	testFilter(p);
 
-	MatrixXd F = KalmanFilter::getCVF(sDim, dt), Q = KalmanFilter::getCVQ(sDim, dt) * 0.1;
-	KalmanFilter kf(F, Q, dt);
-	ExtendedKalmanFilter ekf(F, Q, dt);
-	UnscentedKalmanFilter ukf(Q, dt);
-
-	// sDim, zDim, dt, pS, pB, q, nB, bI, file
-	//testGMJoTT(ekf, sDim, zDim, dt, 1, 1e-5, 0.01, 1, 1, "Results/result_gmjott.csv");
-	testGMJoTTnc(ekf, sDim, zDim, dt, 1, 1e-5, 0.01, 1, 1, "Results/result_gmjott_nc.csv");
-
-	//testbGMJoTT(ekf, sDim, zDim, dt, 1, 1e-5, 0, 1, 1, "Results/result_bgmjott.csv", 0.2);
-
-	//tdmToCSV("C:\\Users\\Andrey\\Desktop\\CAMRa\\Thesis");
-	
 	return 0; 
 }
 
-/**
- * <summary> Prepares variables </summary>
- */
-void prepareVariables(const size_t& _sDim, const size_t& _zDim, const double& _dt, const size_t& _gmmSize)
+void testFilter(parameters & _p)
 {
-	// Parameter intialization
+#ifdef MY_DEBUG
+	clock_t begin = clock();
+#endif
+	shared_ptr<KalmanFilter> kf;
 
-	// Sensor, observation matrices
-	MatrixXd R = MatrixXd::Identity(_zDim, _zDim), H = MatrixXd::Zero(_zDim, _sDim);
+	// Choose the single-target filter
+	if (!strcmp(_p.singleTargetFilterType.c_str(), "kf"))
+		kf = make_shared<KalmanFilter>(_p.F, _p.Q * 0.1, _p.dt);
+	else if (!strcmp(_p.singleTargetFilterType.c_str(), "ekf"))
+		kf = make_shared<ExtendedKalmanFilter>(_p.F, _p.Q * 0.1, _p.dt);
+	else if (!strcmp(_p.singleTargetFilterType.c_str(), "ekf"))
+		kf = make_shared<UnscentedKalmanFilter>(_p.Q * 0.1);
 
-	if (_sDim == 2 && _zDim == 1) 
-	{		// Range-only linear filtering
-		R << 1;										
-		H << 1, 0;									
+	// Sensor 
+	Sensor sensor = Sensor(_p.observationDim, _p.stateDim, _p.pD, _p.lambda, 1e-6, _p.R, _p.H);
+	sensor.setPosition(_p.sensorPosition);
+	// Additional reference system-related parameters
+	sensor.setXp(0);
+	sensor.setYp(0);
+	sensor.setLOD(0);
+
+#ifdef MY_DEBUG
+	clock_t end = clock();
+	double elapsed = double(end - begin) / CLOCKS_PER_SEC;
+	cout << "Load time:\t" << elapsed << " sec" << endl;
+#endif
+
+	// Choose multi-target filter
+	if (!strcmp(_p.multipleTargetFilterType.c_str(), "gmjott")) {
+		GMJoTTFilter gmjott(kf, _p.birthSize, _p.birthIntensity, _p.pS, _p.birthCovariance,
+			VectorXd::Zero(_p.stateDim), VectorXd::Zero(_p.stateDim), _p.qInit, _p.pB);
+		gaussian_mixture gm(_p.stateDim, _p.gaussianMixtureMaxSize);
+		runFilter(gmjott, sensor, gm, _p);
 	}
-	else if (_sDim == 6 && _zDim == 3) 
-	{ // ECI state with RAZEL measurements
-		R(0, 0) = 0.071 * 0.071;			// Range covariance		0.75
-		R(1, 1) = 0.05;	 					// Azimuth covariance	0.075
-		R(2, 2) = 0.05;						// Elevation covariance	0.075
-		R *= 1;								
+	else if (!strcmp(_p.multipleTargetFilterType.c_str(), "bgmjott")) {
+		BGMJoTTFilter bgmjott(kf, _p.birthSize, _p.birthIntensity, _p.pS, _p.birthCovariance,
+			VectorXd::Zero(_p.stateDim), VectorXd::Zero(_p.stateDim), _p.qInit, _p.pB, _p.epsilon);
+		beta_gaussian_mixture bgm(_p.stateDim, _p.gaussianMixtureMaxSize);
+		runFilter(bgmjott, sensor, bgm, _p);
 	}
-		
-	double pD = 0.7, lambda = 1, V = 1e-6;		// Probability of detection and clutter
-	sensor =  Sensor(_zDim, _sDim, pD, lambda, V, R, H);
-
-	VectorXd pos(3); 
-	pos << 51.1483578, -1.4384458, 0.081;
-	sensor.setPosition(pos);
-
-	// GMM
-	gmm = gaussian_mixture(_sDim, _gmmSize);
-	bgmm = beta_gaussian_mixture(_sDim, _gmmSize);
 }
-
+ 
 /**
 * <summary> GMJoTT filter test. </summary>
 */
-template<typename T>
-void testGMJoTT(const T& filter, const size_t& _sDim, const size_t& _zDim, const double& _dt, const double& _pS, const double& _pB, 
-	const double& _q, const unsigned int& _nBirth, const double& _bIntensity, 
-	const string& _outputFileName)
+template <typename MultiTargetFilter, typename Mixture>
+void runFilter(MultiTargetFilter& _filter, Sensor& _sensor, Mixture& _mixture, parameters& _p)
 {
-	VectorXd info, bearing(2), dummy = VectorXd::Zero(_sDim);
-	vector<VectorXd> measurements;
-	vector<gaussian_component> estimates;
-	ofstream outputFile(_outputFileName); 				// Output file 
-	MatrixXd iCov = getInitCovCV(_sDim, 3600, 10);		// Initial covariance matrix
-	TDMReader reader(filename);							// TDM Reader for CAMRa
-
-	if (sim)
-		inputSim.open(filenameSim);
-
-	// Misc
+	VectorXd info(11), infoTemp, bearing(2), temp(3);
+	auto measurements = _sensor.getZ();
+	auto estimates = _mixture.getEstimates(1);
 	bool dtCalculated = false;
 	Astro::date datePrev, dateCurr;
-	double dt = 0, deg2rad = M_PI / 180.0;
 
-	// Additional measurements - added 30/03/2016
-	string filenameClutter = "rand_meas.txt";
-	inputClutter.open(filenameClutter);
-	bool additionalClutter = false;
-	VectorXd clutterMeasurement(3);
+	// IO
+	TDMReader tdmReader;
+	bool tdm;
+	YAML::Emitter result;
+	ofstream outputCSV("Results/result_gmjott.csv") , outputYAML("Results/result_gmjott.yaml");		// Output file 
+	ifstream input;
 
-	// State, observation's dimensions and intial timestep
-	prepareVariables(_sDim, _zDim, _dt, 100);
+#ifdef MY_DEBUG
+	// Debug
+	vector<double> elapsed(6);
+	clock_t start, end;
+	double elapsedTotal;
+#endif
 
-	GMJoTTFilter<ExtendedKalmanFilter> gmjottfilter(filter, _nBirth, _bIntensity, _pS, iCov, lBound, uBound, _q, _pB);
+	if (!strcmp(_p.inputType.c_str(), "tdm")) {
+		tdmReader.open(_p.filename);
+		tdm = true;
+	}
+	else if (!strcmp(_p.inputType.c_str(), "csv_netcdf_cfar"))
+		input.open(_p.filename);
 
-	// Main loop ------------------------------------------------------------------------
-	for (size_t i = 0; i < 10000; i++)
+	// Main loop 
+	for (size_t i = 0; i < 2e5; i++)
 	{
-		if (sim) 
-			info = readSimData();
-		else 
-			info = reader.readEntryEigen();
+#ifdef MY_DEBUG
+		start = clock();
+#endif
+		// Read input
+		if (tdm) {
+			info = tdmReader.readEntryEigen();
+			if (!info.size())
+				break;
+		}
+		else
+		{
+			infoTemp = readNetCDFProcessedEntry(input);
+			if (!infoTemp.size())
+				break;
+			info << 0, infoTemp(7), infoTemp(8), 0, 0, infoTemp.segment(1, 6);
+		}
 
 		if (!info.size())
 			break;
@@ -178,753 +149,98 @@ void testGMJoTT(const T& filter, const size_t& _sDim, const size_t& _zDim, const
 		{
 			datePrev = dateCurr;
 			dtCalculated = true;
-		}
-		else
-		{
-			dt = dateCurr - datePrev;
-			gmjottfilter.updateKFTimestep(dt);
-			datePrev = dateCurr;
+			continue;
 		}
 
+		_filter.setT(dateCurr - datePrev);
+		datePrev = dateCurr;
+		
 		measurements.clear();
-		measurements.push_back(info.segment(0, _zDim));
+		// Check input type
+		if (tdm)
+			measurements.push_back(info.segment(0, _p.observationDim));
+		else
+			for (size_t j = 0; j < infoTemp(9); j++) {
+				temp << infoTemp(10 + j), info(1), info(2);
+				measurements.push_back(temp);
+			}
+
 		bearing << info(1), info(2);
 
-		// Addtioinal clutter test
-		if (additionalClutter) 
-		{
-			VectorXd ranges = readAdditionalClutterMeasurements();
-			
-			for (size_t j = 0; j < (size_t)ranges.size(); j++)
-			{
-				clutterMeasurement << ranges(j), bearing;
-				measurements.push_back(clutterMeasurement);
-			}
-		}
-		
-		sensor.setZ(measurements);
-		sensor.setBearing(bearing);
+		_sensor.setDate(dateCurr);
+		_sensor.setZ(measurements);
+		_sensor.setBearing(bearing);
 
-		// JoTT Filter
-		//cout << endl << "\tStep: " << i << "\t " << r.transpose() << " " << "--------" << endl;
-		//cout << "\t\t" << Astro::razelToTEME(r, sensor.getPosition(), sensor.getDateJD(), sensor.getLOD(), 
-			//sensor.getXp(), sensor.getYp()).transpose() << endl;
+#ifdef MY_DEBUG
+		end = clock();
+		elapsed[0] = elapsedSeconds(start, end); 
 
-		bool c = false;
-
-		if (i >= 2982) {
-			c = false;
-		}
-
-		// JoTT Filter
-		if (c)
-			cout << "\tSTEP " << i << " ----- " << info(0) << " " << info(1) << " " << info(2) << " -----" << endl;
 
 		// Predict
-		gmjottfilter.predict(gmm, sensor);
-		if (c)
-		{
-			cout << "\tPREDICT: q = " << gmjottfilter.getQ() << "\tEw = " << gmm.weightSum() << endl;
-			printMixtureAstroRAZEL(gmm, sensor, false);
-		}
+		start = clock();
+		_filter.predict(_mixture, _sensor);
+		end = clock();
+		elapsed[1] = elapsedSeconds(start, end);
 
 		// Update
-		gmjottfilter.update(gmm, sensor);
-		if (c)
-		{
-			cout << "\tUPDATE: q = " << gmjottfilter.getQ() << "\tEw = " << gmm.weightSum() << endl;
-			printMixtureAstroRAZEL(gmm, sensor, false);
-		}
+		start = clock();
+		_filter.update(_mixture, _sensor);
+		end = clock();
+		elapsed[2] = elapsedSeconds(start, end);
 
-		if (c)
-			cout << "\tMERGE: " << gmm.size() << "->";
 		// Merge
-		gmm.merge(0.8);
-		if (c)
-		{
-			cout << gmm.size() << "\tEw = " << gmm.weightSum() << endl;
-			printMixtureAstroRAZEL(bgmm, sensor, true);
-		}
+		start = clock();
+		_mixture.merge(_p.mergeThreshold);
+		end = clock();
+		elapsed[3] = elapsedSeconds(start, end);
 
-		if (c)
-			cout << "\tPRUNE: " << gmm.size() << "->";
 		// Prune
-		gmm.prune(1e-8);
-		if (c)
-		{
-			cout << gmm.size() << "\tEw = " << gmm.weightSum() << endl;
-			printMixtureAstroRAZEL(gmm, sensor, true);
-		}
+		start = clock();
+		_mixture.prune(_p.pruneThreshold);
+		end = clock();
+		elapsed[4] = elapsedSeconds(start, end);
 
-		estimates = gmm.getEstimates(0.5);
+		start = clock();
+		estimates = _mixture.getEstimates(_p.estimateThreshold);
+		end = clock();
+		elapsed[5] = elapsedSeconds(start, end);
 
-		outputLongGMJoTT(info, estimates, gmjottfilter, outputFile, sensor);
-		outputFile << endl;
+		elapsedTotal = accumulate(elapsed.begin(), elapsed.end(), 0.0);			// Total execution time
+
+
+		cout << setprecision(5) << "Measurements:\t" << elapsed[0] << " sec" << endl;
+		cout << "Predict:\t" << elapsed[1] << " sec" << endl;
+		cout << "Update:\t\t" << elapsed[2] << " sec" << endl;
+		cout << "Merge:\t\t" << elapsed[3] << " sec" << endl;
+		cout << "Prune:\t\t" << elapsed[4] << " sec" << endl;
+		cout << "Estimates:\t" << elapsed[5] << " sec" << endl;
+		cout << "Total: \t\t" << elapsedTotal << " sec" << endl;
+
+		system("pause");
+
+#else
+		_filter.predict(_mixture, _sensor);
+		_filter.update(_mixture, _sensor);
+		_mixture.merge(_p.mergeThreshold);
+		_mixture.prune(_p.pruneThreshold);
+		estimates = _mixture.getEstimates(_p.estimateThreshold);
+#endif
+
+		printEstimatesToCSVFull(_filter, outputCSV, estimates, _sensor, i, 0);
+		printEstimatesToYAMLFull(_filter, result, estimates, _sensor, i, 0);
 
 		// Console output
-		cout << i << " " << estimates.size() << "/" << gmm.size() << " "; 
+		cout << i << " [" << estimates.size() << "/" << _mixture.size() << "][" << _filter.getQ() << "]\t"
+			<< dateCurr.hour << ":" << dateCurr.minute << ":" << dateCurr.sec << " ";
 
-		if (!estimates.empty()) {
+		if (!estimates.empty()) 
 			cout << estimates[0].w << " [" << estimates[0].tag[1] << "][" << estimates[0].tag[2] << "] ";
-			if (estimates[0].kindaConverged)
-				cout << "S ";
-			else
-				cout << "E ";
-
-			if (estimates[0].kindaConverged)
-				cout << "Converged" << endl;
-		}
-		cout << endl;
-	}
-
-	outputFile.close();
-	inputClutter.close();
-}
-
-template<typename T>
-void testGMJoTTnc(const T & _filter, const size_t & _sDim, const size_t & _zDim, const double & _dt, const double & _pS, const double & _pB, const double & _q, const unsigned int & _nBirth, const double & _bIntensity, const string & _outputFileName)
-{
-	VectorXd info(11), infoTemp, bearing(2), dummy = VectorXd::Zero(_sDim);
-	vector<VectorXd> measurements;
-	vector<gaussian_component> estimates;
-	ofstream outputFile(_outputFileName); 				// Output file 
-	MatrixXd iCov = getInitCovCV(_sDim, 3600, 10);		// Initial covariance matrix
-	
-	inputCFAR.open("I:\\Raw Chilbolton\\Results\\100-5-10e-3\\radar-camra-felixx_20150224105654_39574_lev1.txt");
-
-	// Misc
-	bool dtCalculated = false;
-	Astro::date datePrev, dateCurr;
-	double dt = 0.07, deg2rad = M_PI / 180.0;
-
-	// State, observation's dimensions and intial timestep
-	prepareVariables(_sDim, _zDim, _dt, 100);
-
-	GMJoTTFilter<ExtendedKalmanFilter> gmjottfilter(_filter, _nBirth, _bIntensity, _pS, iCov, lBound, uBound, _q, _pB);
-
-	// Main loop ------------------------------------------------------------------------
-	for (size_t i = 0; i < 20000; i++)
-	{
-		infoTemp = readCFAR();
-
-		if (!infoTemp.size())
-			break;
-
-		//cout << infoTemp.transpose() << endl;
-
-		info << 0, infoTemp(7), infoTemp(8), 0, 0, infoTemp.segment(1, 6);
-
-		if (info(1) > 360.0)
-			info(1) -= 360.0;
-		info(1) = 180.0 - info(1);		// Azimuth correction (?)
-
-		dateCurr = Astro::date((int)info(5), (int)info(6), (int)info(7),
-			(int)info(8), (int)info(9), info(10));
-
-		//cout << info.segment(0, 5).transpose() << endl;
-		//cout << info.segment(5, 6).transpose() << endl;
-
-		if (!dtCalculated)
-		{
-			datePrev = dateCurr;
-			dtCalculated = true;
-		}
-		else
-		{
-			dt = dateCurr - datePrev;
-			gmjottfilter.updateKFTimestep(dt);
-			datePrev = dateCurr;
-		}
-
-		measurements.clear();
-
-		for (size_t j = 0; j < infoTemp(9); j++) {
-			VectorXd temp(3);
-			temp << infoTemp(10 + j), info(1), info(2);
-			measurements.push_back(temp);
-		}
-
-		bearing << info(1), info(2);
-
-		sensor.setZ(measurements);
-		sensor.setBearing(bearing);
-
-		// JoTT Filter
-		//cout << endl << "\tStep: " << i << "\t " << r.transpose() << " " << "--------" << endl;
-		//cout << "\t\t" << Astro::razelToTEME(r, sensor.getPosition(), sensor.getDateJD(), sensor.getLOD(), 
-		//sensor.getXp(), sensor.getYp()).transpose() << endl;
-
-		bool c = false;
-
-		if (i >= 30) {
-			c = false;
-		}
-
-		// JoTT Filter
-		if (c)
-			cout << "\tSTEP " << i << " ----- " << info(0) << " " << info(1) << " " << info(2) << " -----" << endl;
-
-		// Predict
-		gmjottfilter.predict(gmm, sensor);
-		if (c)
-		{
-			cout << "\tPREDICT: q = " << gmjottfilter.getQ() << "\tEw = " << gmm.weightSum() << endl;
-			printMixtureAstroRAZEL(gmm, sensor, false);
-		}
-
-		// Update
-		gmjottfilter.update(gmm, sensor);
-		if (c)
-		{
-			cout << "\tUPDATE: q = " << gmjottfilter.getQ() << "\tEw = " << gmm.weightSum() << endl;
-			printMixtureAstroRAZEL(gmm, sensor, false);
-		}
-
-		if (c)
-			cout << "\tMERGE: " << gmm.size() << "->";
-		// Merge
-		gmm.merge(0.8);
-		if (c)
-		{
-			cout << gmm.size() << "\tEw = " << gmm.weightSum() << endl;
-			printMixtureAstroRAZEL(bgmm, sensor, true);
-		}
-
-		if (c)
-			cout << "\tPRUNE: " << gmm.size() << "->";
-		// Prune
-		gmm.prune(1e-8);
-		if (c)
-		{
-			cout << gmm.size() << "\tEw = " << gmm.weightSum() << endl;
-			printMixtureAstroRAZEL(gmm, sensor, true);
-		}
-
-		estimates = gmm.getEstimates(0.5);
-
-		outputLongGMJoTT(info, estimates, gmjottfilter, outputFile, sensor);
-		outputFile << endl;
-
-		// Console output
-		cout << i << " " << estimates.size() << "/" << gmm.size() << " ";
-
-		if (!estimates.empty()) {
-			cout << estimates[0].w << " [" << estimates[0].tag[1] << "][" << estimates[0].tag[2] << "] ";
-			if (estimates[0].kindaConverged)
-				cout << "S ";
-			else	VectorXd info, bearing(2), dummy = VectorXd::Zero(_sDim);
-				cout << "E ";
-
-			if (estimates[0].kindaConverged)
-				cout << "Converged" << endl;
-		}
-		cout << endl;
-	}
-
-	outputFile.close();
-	inputClutter.close();
-}
-
-template<typename T>
-void testbGMJoTT(const T & _filter, const size_t & _sDim, const size_t & _zDim, const double & _dt, const double & _pS, const double & _pB, 
-	const double & _q, const unsigned int & _nBirth, const double & _bIntensity, const string & _outputFileName, const double & _epsilon)
-{
-	VectorXd info, bearing(2), dummy = VectorXd::Zero(_sDim);
-	vector<VectorXd> measurements;
-	vector<beta_gaussian_component> estimates;
-	ofstream outputFile(_outputFileName); 				// Output file 
-	MatrixXd iCov = getInitCovCV(_sDim, 3600, 10);		// Initial covariance matrix
-	TDMReader reader(filename);							// TDM Reader for CAMRa
-
-	if (sim)
-		inputSim.open(filenameSim);
-
-	// Misc
-	bool dtCalculated = false;
-	Astro::date datePrev, dateCurr;
-	double dt = 0, deg2rad = M_PI / 180.0;
-
-	// Additional measurements - added 30/03/2016
-	string filenameClutter = "rand_meas.txt";
-	inputClutter.open(filenameClutter);
-	bool additionalClutter = false;
-	VectorXd clutterMeasurement(3);
-
-	// State, observation's dimensions and intial timestep
-	prepareVariables(_sDim, _zDim, _dt, 20);
-
-	bGMJoTTFilter<ExtendedKalmanFilter> bgmjottfilter(_filter, _nBirth, _bIntensity, _pS, iCov, lBound, uBound, _q, _pB, _epsilon);
-
-	// Main loop ------------------------------------------------------------------------
-	for (size_t i = 0; i < 10000; i++)
-	{
-		if (sim)
-			info = readSimData();
-		else
-			info = reader.readEntryEigen();
-
-		if (!info.size())
-			break;
-
-		if (info(1) > 360.0)
-			info(1) -= 360.0;
-		info(1) = 180.0 - info(1);		// Azimuth correction (?)
-
-		dateCurr = Astro::date((int)info(5), (int)info(6), (int)info(7),
-			(int)info(8), (int)info(9), info(10));
-
-		if (!dtCalculated)
-		{
-			datePrev = dateCurr;
-			dtCalculated = true;
-		}
-		else
-		{
-			dt = dateCurr - datePrev;
-			bgmjottfilter.updateKFTimestep(dt);
-			datePrev = dateCurr;
-		}
-
-		measurements.clear();
-		measurements.push_back(info.segment(0, _zDim));
-		bearing << info(1), info(2);
-
-		// Addtioinal clutter test
-		if (additionalClutter)
-		{
-			VectorXd ranges = readAdditionalClutterMeasurements();
-
-			for (size_t j = 0; j < (size_t)ranges.size(); j++)
-			{
-				clutterMeasurement << ranges(j), bearing;
-				measurements.push_back(clutterMeasurement);
-			}
-		}
-
-		sensor.setZ(measurements);
-		sensor.setBearing(bearing);
-		 
-		bool c = false;
-
-		if (i >= 3707)
-		{
-			c = false;
-		}
-			
-		// JoTT Filter
-		if (c)
-			cout  << "\tSTEP " << i << " ----- " << info(0) << " " << info(1) << " " << info(2) << " -----" << endl;
-
-		// Predict
-		bgmjottfilter.predict(bgmm, sensor);
-		if (c)
-		{
-			cout << "\tPREDICT: q = " << bgmjottfilter.getQ() << "\tEw = " << bgmm.weightSum() << endl;
-			printMixtureAstroRAZEL(bgmm, sensor, true);
-		}
-
-		// Update
-		bgmjottfilter.update(bgmm, sensor);
-		if (c)
-		{
-			cout << "\tUPDATE: q = " << bgmjottfilter.getQ() << "\tEw = " << bgmm.weightSum() << endl;
-			printMixtureAstroRAZEL(bgmm, sensor, true);
-		}
 		
-		if (c)
-			cout << "\tMERGE: " << bgmm.size() << "->";
-		// Merge
-		bgmm.merge(0.8);
-		if (c)
-		{
-			cout << bgmm.size() << "\tEw = " << bgmm.weightSum() << endl;
-			printMixtureAstroRAZEL(bgmm, sensor, true);
-		}
-
-		if (c)
-			cout << "\tPRUNE: " << bgmm.size() << "->";
-		// Prune
-		bgmm.prune(1e-4);
-		if (c) 
-		{
-			cout << bgmm.size() << "\tEw = " << bgmm.weightSum() << endl;
-			printMixtureAstroRAZEL(bgmm, sensor, true);
-		}
-		
-		estimates = bgmm.getEstimates(0.5);
-
-		outputLongBGMJoTT(info, estimates, bgmjottfilter, outputFile, sensor);
-		outputFile << endl;
-
-		// Console output
-		cout << i << " [" << estimates.size() << "/" << bgmm.size() << "] " << setprecision(4) << info(0) << " q = " << setprecision(4) << bgmjottfilter.getQ() << " ";
-
-		if (c)
-			cout << " Estimates: " << estimates.size() << "/" << bgmm.size() << endl;
-
-		if (!estimates.empty()) { 
-			
-			auto meanRAZEL = Astro::temeToRAZEL(estimates[0].m, sensor.getPosition(), sensor.getDateJD(), sensor.getLOD(), sensor.getXp(), sensor.getYp());
-			
-			cout << setprecision(2)  << "[" << estimates[0].tag[0] << "][" << estimates[0].tag[1] << "][" << estimates[0].tag[2] << "] " 
-				<< estimates[0].w << setprecision(4) << " ["<< meanRAZEL(0) << "]";
-			cout << " B: " << estimates[0].u / (estimates[0].u + estimates[0].v);
-			
-			if (estimates[0].kindaConverged)
-				cout << " S";
-			else
-				cout << " E";
-
-			if (estimates[0].kindaConverged)
-				cout << "Converged" << endl;
-		}
-
 		cout << endl;
 	}
 
-	outputFile.close();
-	inputClutter.close();
-}
+	outputYAML << result.c_str();
 
-void outputShortGMJoTT(VectorXd & _info, vector<gaussian_component>& _estimates, GMJoTTFilter<ExtendedKalmanFilter>& _filter, ofstream& _os)
-{
-	VectorXd dummy = VectorXd::Zero(6);
-
-	// Date
-	printVector(_os, _info.segment(5, 6));
-
-	//Measurement
-	printVector(_os, _info.segment(0, 3));
-
-	if (!_estimates.empty())
-	{
-		printVector(_os, Astro::temeToRAZEL(_estimates[0].m, sensor.getPosition(), sensor.getDateJD(), 0, 0, 0));
-		printVector(_os, _estimates[0].m);
-	}
-	else
-	{
-		printVector(_os, dummy);
-		printVector(_os, dummy);
-	}
-
-	_os << _filter.getQ() ;
-}
-
-void outputLongGMJoTT(VectorXd & _info, vector<gaussian_component>& _estimates, GMJoTTFilter<ExtendedKalmanFilter>& _filter, ofstream & _os, Sensor& _sensor)
-{
-	outputShortGMJoTT(_info, _estimates, _filter, _os);
-
-	if (!_estimates.empty())
-		_os << "," << _estimates[0].tag[1] << "," << _estimates[0].P.block<3, 3>(0, 0).determinant() << ","
-		<< _estimates[0].P.block<3, 3>(3, 3).determinant() << ",";
-	else
-		_os << ", 0, 0, 0,";
-
-	VectorXd sensorPosTEME = Astro::ecefToTEME(Astro::geodeticToECEF(_sensor.getPosition()), _sensor.getDateJD(), _sensor.getLOD(), _sensor.getXp(), _sensor.getYp());
-
-	printVector(_os, sensorPosTEME);
-	
-}
-
-void outputShortBGMJoTT(VectorXd & _info, vector<beta_gaussian_component>& _estimates, bGMJoTTFilter<ExtendedKalmanFilter>& _filter, ofstream & _os)
-{
-	VectorXd dummy = VectorXd::Zero(6);
-
-	// Date
-	printVector(_os, _info.segment(5, 6));
-
-	//Measurement
-	printVector(_os, _info.segment(0, 3));
-
-	if (!_estimates.empty())
-	{
-		printVector(_os, Astro::temeToRAZEL(_estimates[0].m, sensor.getPosition(), sensor.getDateJD(), 0, 0, 0));
-		printVector(_os, _estimates[0].m);
-	}
-	else
-	{
-		printVector(_os, dummy);
-		printVector(_os, dummy);
-	}
-
-	_os << _filter.getQ();
-}
-
-void outputLongBGMJoTT(VectorXd & _info, vector<beta_gaussian_component>& _estimates, bGMJoTTFilter<ExtendedKalmanFilter>& _filter, ofstream & _os, Sensor & _sensor)
-{
-	outputShortBGMJoTT(_info, _estimates, _filter, _os);
-
-	if (!_estimates.empty())
-		_os << "," << _estimates[0].tag[1] << "," << _estimates[0].P.block<3, 3>(0, 0).determinant() << ","
-		<< _estimates[0].P.block<3, 3>(3, 3).determinant() << ",";
-	else
-		_os << ", 0, 0, 0,";
-
-	VectorXd sensorPosTEME = Astro::ecefToTEME(Astro::geodeticToECEF(_sensor.getPosition()), _sensor.getDateJD(), _sensor.getLOD(), _sensor.getXp(), _sensor.getYp());
-
-	printVector(_os, sensorPosTEME);
-
-	if (!_estimates.empty())
-		_os << _estimates[0].u / (_estimates[0].u + _estimates[0].v) << "," << _estimates[0].u << "," << _estimates[0].v;
-	else
-		_os << "-1" << "," << "0" << "," << "0";
-}
-
-template<typename T>
-void printMixtureAstroRAZEL(const T & _mixture, const Sensor & _sensor, const bool& _beta)
-{
-	cout << "\tMixture: [" << _mixture.size() << "/" << _mixture.nMax << "]" << endl;
-
-	for (auto c : _mixture.components) 
-	{
-		auto meanRAZEL = Astro::temeToRAZEL(c.m, _sensor.getPosition(), _sensor.getDateJD(), _sensor.getLOD(), _sensor.getXp(), _sensor.getYp());
-		cout << "[" << c.tag[0] << "][" << c.tag[1] << "][" << c.tag[2] << "] w: " << c.w
-			<< "\t m: " << meanRAZEL(0) << " " << meanRAZEL(1) << " " << meanRAZEL(2) << " ";
-
-		// For BGM
-		//if (_beta)
-		//	cout << "Beta: [" << c.u / (c.u + c.v) << "]";
-
-		cout << endl;
-	} 
-}
-
-/**
-* ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-*/
-
-/**
- * <summary> Checks if the specified string contains the desired character sequence (suffix). </summary>
- * <param name = "_s"> The main string to be searched. </param>
- * <param name = "_suffix"> The required substring. </param>
- */
-bool has_suffix(const string& _s, const string& _suffix)
-{
-	return (_s.size() >= _suffix.size()) && equal(_suffix.rbegin(), _suffix.rend(), _s.rbegin());
-}
-
-/**
- * <summary> A function for testing Shepperd state transition matrix. </summary>
- */
-void testSTM() {
-
-	ofstream stm;
-	stm.open("test_stm.txt");
-
-	VectorXd state(6), result(6), resultF(6); 
-	MatrixXd shepperd;
-	state << -1288.75878841, 4184.25775350, 5168.32743761, -7.52063480, -0.61162224, -1.37936734;
-
-	shepperd = Astro::getShepperdMatrix(state, 10.0, result, Astro::MU_E);
-	resultF = shepperd * state;
-
-	cout << setprecision(8) << state.transpose() << endl;
-	cout << result.transpose() << endl;
-	cout << resultF.transpose() << endl;
-
-	cout << endl;
-
-	stm.close();
-}
-
-/*
- * <summary> A function for testing coordinate transformations. </summary>
- */
-void testTransformations()
-{
-	double deg2rad = M_PI / 180.0;
-
-	VectorXd razel(6), sez(6), razelRad(6), teme(6);
-	Astro::date d(2014, 2, 28, 10, 22, 3.65);
-	double jd = Astro::getJulianDay(d);
-
-	razel << 638.615, 180 - 168.435, 16.1771, 1, 0.1, 0.2;
-	teme << 3811.41, 413.827, 5739.91, 0.257854, -0.743775, -1.24866;
-
-	cout << "TEME:\t" << teme.transpose() << endl;
-	VectorXd ecef = Astro::temeToECEF(teme, jd, 0, 0, 0);
-	cout << "ECEF:\t" << ecef.transpose() << endl;
-
-}
-
-/*
- * <summary> A function for printing Eigen vector with single spacing between components. </summary>
- * <param name = "_os"> A reference to the output stream. </param>
- * <param name = "_v"> A constant reference to the vector to print. </param>
- */
-void printVector(ofstream& _os, const VectorXd & _v)
-{
-	for (size_t i = 0; i < (size_t)_v.size(); i++)
-		_os << _v(i) << ",";
-}
-
-/**
- * <summary> Uniform birth process for range filtering </summary>
- * <param name = "_sensor"> A refenrce to the sensor. </param>
- * <param name = "_sensor"> Measurement number </param>
- * <returns> A 2-dimensional VectorXd containing range = 1000 and zero velocity. </returns>
- */
-VectorXd uniformBirthRange2D(Sensor& _sensor, const size_t& _zNum)
-{
-	VectorXd birth(2);
-	birth << 1000, 0;
-	return birth;
-}
-
-/**
- * <summary> Uniform birth process for 6D filtering in ECI. </summary>
- * <param name = "_sensor"> A reference to the sensor. </param>
- * <param name = "_zNum"> Mesurement number. </param>
- * <returns> A VectorXd containing a ECI state vector with range = 1000 km along the current sensor bearing. </returns>
- */
-VectorXd uniformBirthRange6DRAZEL(Sensor & _sensor, const size_t& _zNum)
-{
-	VectorXd birth = _sensor.getZ(_zNum);
-	birth(0) = 1000;
-	return Astro::razelToTEME(birth, _sensor.getPosition(), Astro::getJulianDay(_sensor.getDate()), _sensor.getXp(), sensor.getYp(), 2);
-}
-
-/**
- * <summary> Splits a string according to the delimeters specified. </summary>
- * Source: http://stackoverflow.com/questions/236129/split-a-string-in-c
- * <returns> A vector of strings containing the elements of the initial string </returns>
- */
-vector<string>& split(const string &s, char delim, vector<string> &elements) {
-
-	std::stringstream ss(s);
-	std::string item;
-
-	if (elements.size() != 0)
-		elements.clear();
-
-	while (std::getline(ss, item, delim)) {
-		if (item.size() > 0)
-			elements.push_back(item);
-	}
-
-	return elements;
-}
-
-/**
- * <summary> Reads simulated data. </summary>
- * <returns> A VectorXd with the simulated rada measurement and corresponding timestamp. </returns>
- */
-VectorXd readSimData()
-{
-	getline(inputSim, buffer);
-	vector<string> elements;
-	split(buffer, ' ', elements);
-	VectorXd result(elements.size());
-
-	if (elements.size() != 0)
-	{
-		for (size_t i = 0; i < elements.size(); i++)
-			result[i] = stod(elements[i]);
-	}
-
-	return result;
-}
-
-/**
- * <summary> A function for reading additional clutter measurements generated in Matlab. </summary>
- * <retuns> A VectorXd containing clutter measurements. </returns>
- */
-VectorXd readAdditionalClutterMeasurements()
-{
-	getline(inputClutter, buffer);
-	vector<string> elements;
-	split(buffer, ' ', elements);
-	VectorXd result(elements.size());
-
-	if (elements.size() != 0)
-	{
-		for (size_t i = 0; i < elements.size(); i++)
-			result[i] = stod(elements[i]);
-	}
-
-	return result;
-}
-
-VectorXd readCFAR()
-{
-	getline(inputCFAR, buffer);
-	vector<string> elements;
-	split(buffer, ',', elements);
-	VectorXd result(elements.size());
-
-	if (elements.size() != 0)
-	{
-		for (size_t i = 0; i < elements.size(); i++)
-			result[i] = stod(elements[i]);
-	}
-
-	return result;
-}
-
-/**
- * <summary> A function for converting all files with .tdm extension to .csv file with raw data. </summary>
- * <param name = "_s"> A path to the folder containing .tdm files. </param>
- */
-void tdmToCSV(const string & _s)
-{
-	DIR *dir = opendir(_s.c_str());
-	if (!dir)
-		cout << "Directory not found" << endl;
-	else 
-	{
-		dirent *entry;
-		ofstream ofscsv;
-		string filePath;
-		vector<double> dataEntry;
-
-		// Read all files
-		while (entry = readdir(dir))
-		{
-			// Check for .tdm extension
-			if (has_suffix(entry->d_name, ".tdm"))
-			{
-				cout << entry->d_name << endl;
-				filePath = _s + "\\" + entry->d_name;
-				TDMReader tdmr(filePath);
-
-				filePath.replace(filePath.end() - 3, filePath.end(), "csv");
-				ofscsv.open(filePath);
-
-				tdmr.getHeader();
-
-				while (true) {
-
-					dataEntry = tdmr.readEntry();
-
-					if (!dataEntry.size())
-						break;
-
-					for (size_t i = 0; i < dataEntry.size()-1; i++) 
-						ofscsv << dataEntry[i] << ",";
-
-					ofscsv << dataEntry[dataEntry.size() - 1] << endl;
-				}
-
-				ofscsv.close();
-			}
-		}
-	}
-		
-	closedir(dir);
-	
-}
-
-/**
- * <summary> Gets the inital covariance for the constant velocity model. </summary>
- * <param name = "_dim"> Dimension of the state vector. </param>
- * <param name = "_pCov"> Covariance of the position. </param>
- * <param name = "_vCov"> Covariance of the velocity </param>
- * <returns> MatrixXd containing the initial covariance matrix (constant velocity model). </returns>
- */
-MatrixXd getInitCovCV(const size_t & _dim, const double & _pCov, const double & _vCov)
-{
-	assert(_dim % 2 == 0 && "Works only for even-sized matrices");
-	MatrixXd initCov(_dim, _dim), i = MatrixXd::Identity(_dim / 2, _dim / 2);
-	initCov << i * _pCov, i * 0, i * 0, i * _vCov;
-	return initCov;
+	outputCSV.close();
+	outputYAML.close();
 }

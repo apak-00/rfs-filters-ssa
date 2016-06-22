@@ -27,9 +27,6 @@
     <ClInclude Include="GMPHDFilter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="TDMReader.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="GMJoTTFilter.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -39,9 +36,6 @@
     <ClInclude Include="Astro.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="bGMJoTTFilter.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="unscented_sampler.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -49,6 +43,21 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="CFARProcessor.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SingleTargetFilter.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GMRFSFilter.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="BGMJoTTFilter.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Debug.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="IOHelpers.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -68,9 +77,6 @@
     <ClCompile Include="GMPHDFilter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="TDMReader.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="ExtendedKalmanFilter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -83,10 +89,13 @@
     <ClCompile Include="CFARProcessor.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="IOHelpers.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
-    <None Include="params_bgmjott.yaml">
+    <None Include="config.yaml">
       <Filter>Resource Files</Filter>
     </None>
   </ItemGroup>

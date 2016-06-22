@@ -1,22 +1,22 @@
 #pragma once
 #include <vector>
+
+// TODO: Yet to be implemented
+/**
+ * <summary> Cell-averaging constant false alarm rate processor. </summary>
+ */
 class CFARProcessor
 {
-private:
-
-	int operation_mode_;			// Mode of operation
-	double fpr_;					// Expected false positive rate
-	double cloud_min_range_;		// Closest distance
-	double cloud_max_range_;		// Far distance
-	double inner_window_radius_;	// Radius of the inner area around the interest point
-	double outer_window_radius_;	// Radius of the outer area around the interest point
-	double angle_granularity_;		// Granularity of the angle
-	double range_granularity_;		// Granularity of the range
-
 public:
 	CFARProcessor();
-	~CFARProcessor();
 
-	std::vector<double> process_cloud_1D(const std::vector<double>& _scan);
+	std::vector<double> processCACFAR1D(const std::vector<double>& _scan);
+
+private:
+	double falsePositiveRate;	// Expected false positive rate
+	double minRange;			// Closest distance
+	double maxRange;			// Far distance
+	double innerWindowRadius;	// Radius of the inner area around the interest point
+	double outerWindowRadius;	// Radius of the outer area around the interest point
 };
 

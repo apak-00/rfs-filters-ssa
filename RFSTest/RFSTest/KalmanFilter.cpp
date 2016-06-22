@@ -3,7 +3,7 @@
 // Temp
 #include <iostream>
 
-KalmanFilter::KalmanFilter(): dt(0) {}
+KalmanFilter::KalmanFilter(): SingleTargetFilter() {}
 
 /**
  * <summary> Basic constructor of the KalmanFilter class. </summary>
@@ -11,8 +11,8 @@ KalmanFilter::KalmanFilter(): dt(0) {}
  * <param name = "_Q"> Transition noise matrix. </param>
  * <param name = "_t"> Timestep </param>
  */
-KalmanFilter::KalmanFilter(const decltype(F)& _F, const decltype(Q) _Q, const decltype(dt) _dt)
-	: F(_F), Q(_Q), dt(_dt) 
+KalmanFilter::KalmanFilter(const decltype(F)& _F, const decltype(Q) _Q, const decltype(dt) _dt) 
+	: SingleTargetFilter(_dt) ,F(_F), Q(_Q)
 {
 	assert(F.rows() == F.cols() && "F Matrix is not square.");
 	assert(Q.rows() == Q.cols() && "Q Matrix is not square.");
@@ -23,7 +23,7 @@ KalmanFilter::KalmanFilter(const decltype(F)& _F, const decltype(Q) _Q, const de
  * <param name = "_kf"> An instance of Kalman Filter to copy from. </param>
  */
 KalmanFilter::KalmanFilter(const KalmanFilter & _kf)
-	: F(_kf.F), Q(_kf.Q), dt(_kf.dt) {}
+	: F(_kf.F), Q(_kf.Q), SingleTargetFilter(_kf.dt) {}
 
 /**
  * <summary> Assignment operator overloading. </summary>
@@ -116,6 +116,12 @@ MatrixXd KalmanFilter::getCVQ(const size_t& _dim, const double& _dt)
 	return q * q.transpose();
 }
 
+/**
+ * <summary> Get auxialry vector for state transition covariance matrix calculation. </summary>
+ * <param name = "_dim"> The dimensionality of the state vector. </param>
+ * <param name = "_dt"> The timestep. </param>
+ * <returns> Auxilary vector of the specified dimension. </returns>
+ */
 VectorXd KalmanFilter::getCVq(const size_t & _dim, const double & _dt)
 {
 	assert(_dim % 2 == 0 && "Works only for even-sized matrices");

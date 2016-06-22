@@ -168,16 +168,25 @@ void gaussian_component::initTag(const int& _id) {
  */
 std::ostream & operator<<(std::ostream & _os, const gaussian_component & _gc)
 {
-	return _os << _gc.tag[0] << " [" << _gc.tag[1] << "]" 
-		<< "[" << _gc.tag[2] << "] " << _gc.w << " " << "("<< _gc.m.transpose() << ")";
+	for (size_t i = 0; i < _gc.m.size(); i++)
+		_os << _gc.m(i) << ",";
+	
+	_os << _gc.w << "," << _gc.tag[1] << "," 
+		<< _gc.P.determinant() << "," << _gc.P.block<3, 3>(0, 0).determinant() << "," << _gc.P.block<3, 3>(3, 3).determinant();
+
+	return _os ;
 }
 
 std::ostream & operator<<(std::ostream & _os, const beta_gaussian_component & _gc)
 {
-	// TODO: insert return statement here
-	return _os << _gc.tag[0] << " [" << _gc.tag[1] << "]"
-		<< "[" << _gc.tag[2] << "] " << _gc.w << " " << "(" << _gc.m.transpose() << ")" 
-		<< " Beta: " << _gc.u << " " << _gc.v;
+	for (size_t i = 0; i < _gc.m.size(); i++)
+		_os << _gc.m(i) << ",";
+
+	_os << _gc.w << "," << _gc.tag[1] << ","
+		<< _gc.P.determinant() << "," << _gc.P.block<3, 3>(0, 0).determinant() << "," << _gc.P.block<3, 3>(3, 3).determinant() << ","
+		<< _gc.u << "," << _gc.v << "," << _gc. u / (_gc.u + _gc.v);
+
+	return _os;
 }
 
 
@@ -311,12 +320,12 @@ double beta_gaussian_component::getBetaVariance(const double & _u, const double 
 beta_gaussian_mixture::beta_gaussian_mixture() : mixture() {}
 
 /**
- *
+ * <summary >A constructor of the Beta Gaussian Mixture that takes the dimensionality of the stored components 
+ * and the maximumum number of componentes as the parameters of the filter. </summary>
+ * <param name = "_dim"> Dimensionality of the stored components. </param>
+ * <param name = "_nMax"> Maximum number of components in the mixture. </param>
  */
-beta_gaussian_mixture::beta_gaussian_mixture(const size_t & _dim, const size_t & _nMax) : mixture(_dim, _nMax)
-{
-
-}
+beta_gaussian_mixture::beta_gaussian_mixture(const size_t & _dim, const size_t & _nMax) : mixture(_dim, _nMax) {}
 
 /*
  * <summary> Main constructor of the beta-Gaussian Mixture. </summary>
@@ -346,6 +355,11 @@ beta_gaussian_mixture::beta_gaussian_mixture(const beta_gaussian_mixture & _bgm)
 {
 }
 
+/**
+ * <summary> Merge procedure of the Beta Gaussian Mixture. </summary>
+ * <par> Hellinger distance is used as a merging criteria. </par>
+ * <param name = "_mergeThreshold"> Merge threshold</param>
+ */
 void beta_gaussian_mixture::merge(const double & _mergeThreshold)
 {
 	std::vector<beta_gaussian_component> temp;
@@ -381,6 +395,10 @@ void beta_gaussian_mixture::merge(const double & _mergeThreshold)
 	components = temp;
 }
 
+/*
+ * TODO: To be implemented
+ * <summary> Calculates hellinger distance between Beta-Gaussian components. </summary>
+ */
 double beta_gaussian_mixture::betaHellinger(const beta_gaussian_component & _bgc1, const beta_gaussian_component & _bgc2)
 {
 	return 0.0;
