@@ -50,8 +50,12 @@ void testFilter(parameters & _p)
 		kf = make_shared<KalmanFilter>(_p.F, _p.Q * 0.1, _p.dt);
 	else if (!strcmp(_p.singleTargetFilterType.c_str(), "ekf"))
 		kf = make_shared<ExtendedKalmanFilter>(_p.F, _p.Q * 0.1, _p.dt);
-	else if (!strcmp(_p.singleTargetFilterType.c_str(), "ekf"))
+	else if (!strcmp(_p.singleTargetFilterType.c_str(), "ukf"))
+	{
 		kf = make_shared<UnscentedKalmanFilter>(_p.Q * 0.1);
+		kf->setT(_p.dt);
+	}
+		
 
 	// Sensor 
 	Sensor sensor = Sensor(_p.observationDim, _p.stateDim, _p.pD, _p.lambda, 1e-6, _p.R, _p.H);
@@ -64,7 +68,7 @@ void testFilter(parameters & _p)
 #ifdef MY_DEBUG
 	clock_t end = clock();
 	double elapsed = double(end - begin) / CLOCKS_PER_SEC;
-	cout << "Load time:\t" << elapsed << " sec" << endl;
+	std::cout << "Load time:\t" << elapsed << " sec" << std::endl;
 #endif
 
 	// Choose multi-target filter
@@ -172,21 +176,26 @@ void runFilter(MultiTargetFilter& _filter, Sensor& _sensor, Mixture& _mixture, p
 		_sensor.setBearing(bearing);
 
 #ifdef MY_DEBUG
+		bool debug_ = false;
 		end = clock();
-		elapsed[0] = elapsedSeconds(start, end); 
+		elapsed[0] = elapsedSeconds(start, end);
 
+		cout << "[" << i << "] " << setprecision(4) << _filter.getQ() << " Meas: " << measurements[0].transpose() << endl;
 
 		// Predict
 		start = clock();
 		_filter.predict(_mixture, _sensor);
 		end = clock();
 		elapsed[1] = elapsedSeconds(start, end);
+		cout << "Predict:" << endl;
+		printMixtureRAZEL(_mixture, _sensor);
 
 		// Update
 		start = clock();
 		_filter.update(_mixture, _sensor);
 		end = clock();
 		elapsed[2] = elapsedSeconds(start, end);
+		cout << "Update:" << endl;
 
 		// Merge
 		start = clock();
@@ -199,6 +208,8 @@ void runFilter(MultiTargetFilter& _filter, Sensor& _sensor, Mixture& _mixture, p
 		_mixture.prune(_p.pruneThreshold);
 		end = clock();
 		elapsed[4] = elapsedSeconds(start, end);
+		
+		printMixtureRAZEL(_mixture, _sensor);
 
 		start = clock();
 		estimates = _mixture.getEstimates(_p.estimateThreshold);
@@ -207,19 +218,18 @@ void runFilter(MultiTargetFilter& _filter, Sensor& _sensor, Mixture& _mixture, p
 
 		elapsedTotal = accumulate(elapsed.begin(), elapsed.end(), 0.0);			// Total execution time
 
+		//cout << setprecision(5) << "Measurements:\t" << elapsed[0] << " sec" << endl;
+		//cout << "Predict:\t" << elapsed[1] << " sec" << endl;
+		//cout << "Update:\t\t" << elapsed[2] << " sec" << endl;
+		//cout << "Merge:\t\t" << elapsed[3] << " sec" << endl;
+		//cout << "Prune:\t\t" << elapsed[4] << " sec" << endl;
+		//cout << "Estimates:\t" << elapsed[5] << " sec" << endl;
+		//cout << "Total: \t\t" << elapsedTotal << " sec" << endl;
 
-		cout << setprecision(5) << "Measurements:\t" << elapsed[0] << " sec" << endl;
-		cout << "Predict:\t" << elapsed[1] << " sec" << endl;
-		cout << "Update:\t\t" << elapsed[2] << " sec" << endl;
-		cout << "Merge:\t\t" << elapsed[3] << " sec" << endl;
-		cout << "Prune:\t\t" << elapsed[4] << " sec" << endl;
-		cout << "Estimates:\t" << elapsed[5] << " sec" << endl;
-		cout << "Total: \t\t" << elapsedTotal << " sec" << endl;
-
-		system("pause");
-
+		//system("pause");
+		
 #else
-		_filter.predict(_mixture, _sensor);
+ 		_filter.predict(_mixture, _sensor);
 		_filter.update(_mixture, _sensor);
 		_mixture.merge(_p.mergeThreshold);
 		_mixture.prune(_p.pruneThreshold);
@@ -230,13 +240,20 @@ void runFilter(MultiTargetFilter& _filter, Sensor& _sensor, Mixture& _mixture, p
 		printEstimatesToYAMLFull(_filter, result, estimates, _sensor, i, 0);
 
 		// Console output
-		cout << i << " [" << estimates.size() << "/" << _mixture.size() << "][" << _filter.getQ() << "]\t"
+		cout << i << " " <<  _sensor.getZ(0)(0) << " [" << estimates.size() << "/" << _mixture.size() << "][" << _filter.getQ() << "]\t"
 			<< dateCurr.hour << ":" << dateCurr.minute << ":" << dateCurr.sec << " ";
 
 		if (!estimates.empty()) 
-			cout << estimates[0].w << " [" << estimates[0].tag[1] << "][" << estimates[0].tag[2] << "] ";
+		{
+			VectorXd temp = Astro::temeToRAZEL(estimates[0].m, _sensor.getPosition(), _sensor.getDateJD(), _sensor.getLOD(), _sensor.getXp(), _sensor.getYp());
+			cout << estimates[0].w << " [" << estimates[0].tag[1] << "][" << estimates[0].tag[2] << "] " << temp(0);
+		}
+			
 		
 		cout << endl;
+#ifdef MY_DEBUG
+		cout << endl;
+#endif
 	}
 
 	outputYAML << result.c_str();

@@ -248,7 +248,7 @@ namespace IOHelpers
 	 */
 	parameters readParametersYAML(const string & _filename)
 	{
-		YAML::Node config = YAML::LoadFile("config.yaml");
+		YAML::Node config = YAML::LoadFile(_filename);
 
 		parameters params;
 
@@ -424,7 +424,7 @@ namespace IOHelpers
 	 * <param name = "_end"> End clock. </param>
 	 * <return> Time diffrence between end and start in seconds. </return>
 	 */
-	inline double elapsedSeconds(const double& _start, const double& _end) 
+	double elapsedSeconds(const double& _start, const double& _end) 
 	{ 
 		return (_end - _start) / CLOCKS_PER_SEC; 
 	}

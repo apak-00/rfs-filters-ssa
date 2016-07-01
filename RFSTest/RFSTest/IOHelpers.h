@@ -106,7 +106,7 @@ namespace IOHelpers
 
 	bool has_suffix(const string& _s, const string& _suffix);
 	vector<string>& split(const string &s, char delim, vector<string> &elements);
-	inline double elapsedSeconds(const double& _start, const double& _end);
+	double elapsedSeconds(const double& _start, const double& _end);
 
 	ostream & operator<<(std::ostream & _os, const parameters & _params);
 	parameters readParametersYAML(const string & _filename);
@@ -229,6 +229,17 @@ namespace IOHelpers
 			_yamle << i.w << i.tag[1] << i.P.determinant() << i.P.block<3, 3>(0, 0).determinant() << i.P.block<3, 3>(3, 3).determinant();
 
 			_yamle << YAML::EndSeq;
+		}
+	}
+
+	template<typename Mixture>
+	inline void printMixtureRAZEL(Mixture& _m, Sensor& _sensor)
+	{
+		VectorXd temp;
+		for (size_t i = 0; i < _m.size(); i++)
+		{
+			temp = Astro::temeToRAZEL(_m[i].m, _sensor.getPosition(), _sensor.getDateJD(), _sensor.getLOD(), _sensor.getXp(), _sensor.getYp());
+			cout << "\t" << i << " " << setprecision(4)  <<  _m[i].w << " " << temp.head(3).transpose() << endl;
 		}
 	}
 }

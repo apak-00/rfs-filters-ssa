@@ -1,0 +1,36 @@
+filename:	Data/c20140228_1020_14819_TOD.tdm
+input_type:	tdm
+
+sensor_configuration:
+  type:						radar
+  observation_type:			razel
+  observation_size:			3
+  latitude:					51.1483578
+  longitude:				-1.4384458
+  altitude:					0.081
+  pd:			0.8
+  kappa:		1
+  lambda:		1
+  clutter:		1
+  R:			[0.005041, 0.05, 0.05]
+  
+filter_parameters_single_target:
+  type:				ekf
+  state_dim:		6
+  motion_model:		cv			
+  dt:				0.07
+
+filter_parameters_multiple_target:
+  type:				gmjott
+  gm_max_size:		100
+  birth_type:		uniform
+  birth_num:		1
+  birth_intensity:	1
+  th_merge:			0.8
+  th_prune:			1e-8
+  th_estimate:		0.5
+  pb:				1e-5
+  ps:				1
+  q_initial:		0.01
+  birth_cov:		[3600, 3600, 3600, 10, 10, 10]
+  beta_epsilon:		0.01

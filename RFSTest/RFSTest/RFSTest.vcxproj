@@ -48,6 +48,8 @@
     <ClCompile Include="UnscentedKalmanFilter.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="ClassDiagram.cd" />
+    <None Include="ClassDiagram1.cd" />
     <None Include="config.yaml" />
     <None Include="packages.config" />
   </ItemGroup>

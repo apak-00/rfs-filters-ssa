@@ -20,4 +20,6 @@ public:
 
 	auto getT() { return filter->getT(); }
 	virtual void setT(const double & _t) { filter->setT(_t); }
+
+	bool debug_ = false;
 };

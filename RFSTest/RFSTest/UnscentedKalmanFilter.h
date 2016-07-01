@@ -5,8 +5,6 @@
 class UnscentedKalmanFilter :
 	public KalmanFilter
 {
-private:
-
 public:
 
 	UnscentedKalmanFilter();
@@ -15,5 +13,8 @@ public:
 	void predict(gaussian_component& _gc);
 	void update(gaussian_component& _gc, Sensor& _sensor, const size_t& _zNum);
 
+private:
+	void getSigmaPoints(const VectorXd &_mean, const MatrixXd &_cov, const double &_w0, 
+		std::vector<Eigen::VectorXd>& _points, std::vector<double>& _weights);
 };
 

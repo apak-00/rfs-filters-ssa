@@ -92,6 +92,7 @@ Sensor& Sensor::operator = (const Sensor& _s)
 double Sensor::zMahalanobis(const VectorXd& mean, const size_t& _mN) {
 
 	VectorXd d = z.at(_mN) - Astro::sezToRAZEL(mean).head(3);
+	//std::cout << "S: "<< S << std::endl;
 	return d.transpose() * S.llt().solve(d);
 }
 
