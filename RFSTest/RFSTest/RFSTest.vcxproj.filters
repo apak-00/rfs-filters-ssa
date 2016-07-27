@@ -60,6 +60,9 @@
     <ClInclude Include="IOHelpers.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="TestFilter.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="gmm.cpp">
@@ -92,13 +95,15 @@
     <ClCompile Include="IOHelpers.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="TestFilter.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
     <None Include="config.yaml">
       <Filter>Resource Files</Filter>
     </None>
-    <None Include="ClassDiagram1.cd" />
     <None Include="ClassDiagram.cd" />
   </ItemGroup>
 </Project>

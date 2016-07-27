@@ -128,7 +128,8 @@ public:
 				VectorXd sez = Astro::temeToSEZ(gct.m, _sensor.getPosition(), _sensor.getDateJD(), _sensor.getLOD(), _sensor.getXp(), _sensor.getYp());
 				
 				double mah = _sensor.zMahalanobis(sez, i);
-				//std::cout << _sensor.getS() << std::endl;
+				//std::cout << "S: " << std::endl << _sensor.getS() << std::endl;
+				//std::cout << "Mah: " << mah << std::endl;
 				auto qk = (1.0 / sqrt(pow(2.0 * M_PI, _sensor.getZDim()) * _sensor.getS().determinant())) * exp(-0.5 * mah);
 				gct.w *= qk / (_sensor.getLambda() * cz);
 

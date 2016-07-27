@@ -227,7 +227,7 @@ namespace IOHelpers
 	 */
 	void TDMReader::TDMToYAML(const string & _filename)
 	{
-
+		// TODO: 
 	}
 
 	/**
@@ -262,8 +262,8 @@ namespace IOHelpers
 		params.observationDim = config["sensor_configuration"]["observation_size"].as<size_t>();
 
 		params.sensorPosition = VectorXd(3);
-		params.sensorPosition << config["sensor_configuration"]["latitude"].as<double>(),
-			config["sensor_configuration"]["longitude"].as<double>(),
+		params.sensorPosition << config["sensor_configuration"]["latitude"].as<double>() * M_PI / 180.0,
+			config["sensor_configuration"]["longitude"].as<double>() * M_PI / 180.0,
 			config["sensor_configuration"]["altitude"].as<double>();
 
 		params.pD = config["sensor_configuration"]["pd"].as<double>();
@@ -310,6 +310,10 @@ namespace IOHelpers
 		params.H = MatrixXd::Zero(params.observationDim, params.stateDim);
 		for (size_t i = 0; i < params.observationDim; i++)
 			params.H(i, i) = 1;
+
+		// Temporary variables
+		params.clutterMultiplierTemp = config["temp"]["clutter_mult_temp"].as<double>();
+		params.ukfSigmaSamplerW = config["temp"]["ukf_sigma_sampler_w"].as<double>();
 
 		return params;
 	}
@@ -373,6 +377,23 @@ namespace IOHelpers
 		for (size_t i = 0; i < (size_t)_v.size() - 1; i++)
 			_os << _v(i) << ",";
 		_os << _v(_v.size() - 1);
+	}
+
+	VectorXd readSimulatedEntry(ifstream & _input)
+	{
+		string buffer;
+		getline(_input, buffer);
+		vector<string> elements;
+		split(buffer, ',', elements);
+		VectorXd result(elements.size());
+
+		if (elements.size() != 0)
+		{
+			for (size_t i = 0; i < elements.size(); i++)
+				result[i] = stod(elements[i]);
+		}
+
+		return result;
 	}
 
 	/**

@@ -12,10 +12,10 @@ sensor_configuration:
   kappa:		1
   lambda:		1
   clutter:		1
-  R:			[0.005041, 0.05, 0.05]
+  R:			[0.05041, 0.05, 0.05]
   
 filter_parameters_single_target:
-  type:				ekf
+  type:				test
   state_dim:		6
   motion_model:		cv			
   dt:				0.07
@@ -34,3 +34,7 @@ filter_parameters_multiple_target:
   q_initial:		0.01
   birth_cov:		[3600, 3600, 3600, 10, 10, 10]
   beta_epsilon:		0.01
+  
+temp:
+  clutter_mult_temp:	1
+  ukf_sigma_sampler_w:	0.5

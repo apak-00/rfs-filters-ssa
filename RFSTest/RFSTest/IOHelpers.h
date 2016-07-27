@@ -59,6 +59,10 @@ namespace IOHelpers
 		double qInit;							// Initial pribability of target existence (for JoTT filter)
 
 		double epsilon;							// Epsilon increment for the Beta Gaussian Components
+
+		// Temporary parameters
+		double clutterMultiplierTemp;
+		double ukfSigmaSamplerW;
 	};
 
 	/*
@@ -242,4 +246,8 @@ namespace IOHelpers
 			cout << "\t" << i << " " << setprecision(4)  <<  _m[i].w << " " << temp.head(3).transpose() << endl;
 		}
 	}
+
+	VectorXd readSimulatedEntry(ifstream& _input);
+
+	
 }
