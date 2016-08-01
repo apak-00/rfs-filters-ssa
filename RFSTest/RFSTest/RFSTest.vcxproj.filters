@@ -60,7 +60,7 @@
     <ClInclude Include="IOHelpers.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="TestFilter.h">
+    <ClInclude Include="MathHelpers.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -93,9 +93,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="IOHelpers.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="TestFilter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

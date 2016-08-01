@@ -16,7 +16,6 @@
 
 #include "ExtendedKalmanFilter.h"
 #include "UnscentedKalmanFilter.h"
-#include "TestFilter.h"
 
 #include "IOHelpers.h"
 
@@ -53,7 +52,7 @@ void testSingleTargetFilter(parameters & _p) {
 	shared_ptr<KalmanFilter> kf;
 	ifstream input;
 	ofstream output;
-	bool debug_ = false;
+	bool debug_ = true;
 
 	// Filter choice
 	if (!strcmp(_p.singleTargetFilterType.c_str(), "kf"))
@@ -65,11 +64,6 @@ void testSingleTargetFilter(parameters & _p) {
 		kf = make_shared<UnscentedKalmanFilter>(_p.Q * 0.1, _p.ukfSigmaSamplerW, 0);
 		kf->setT(_p.dt);
 	} 
-	else if (!strcmp(_p.singleTargetFilterType.c_str(), "test"))
-	{
-		kf = make_shared<TestFilter>(_p.Q * 0.1, _p.ukfSigmaSamplerW, 0);
-		kf->setT(_p.dt);
-	}
 
 	// Sensor 
 	Sensor sensor = Sensor(_p.observationDim, _p.stateDim, _p.pD, _p.lambda, 1e-6, _p.R, _p.H);
@@ -144,7 +138,7 @@ void testSingleTargetFilter(parameters & _p) {
 
 		if (i >= 0) {
 			debug_ = false;
-			kf->debug = false;
+			kf->debug = true;
 		}
 
 		// Filter
@@ -186,11 +180,6 @@ void testFilter(parameters & _p)
 		kf = make_shared<UnscentedKalmanFilter>(_p.Q * 0.1,  _p.ukfSigmaSamplerW, 0);
 		kf->setT(_p.dt);
 	}
-	else if (!strcmp(_p.singleTargetFilterType.c_str(), "test"))
-	{
-		kf = make_shared<TestFilter>(_p.Q * 0.1, _p.ukfSigmaSamplerW, 0);
-		kf->setT(_p.dt);
-	}
 		
 	// Sensor 
 	Sensor sensor = Sensor(_p.observationDim, _p.stateDim, _p.pD, _p.lambda, 1e-6, _p.R, _p.H);
@@ -201,13 +190,13 @@ void testFilter(parameters & _p)
 	sensor.setLOD(0);
 
 	// Temporary
-	_p.R(1, 1) = _p.R(1, 1) * DEG2RAD;
-	_p.R(2, 2) = _p.R(2, 2) * DEG2RAD;
+	_p.R(1, 1) = _p.R(1, 1) * DEG2RAD * DEG2RAD;
+	_p.R(2, 2) = _p.R(2, 2) * DEG2RAD * DEG2RAD;
 
 #ifdef MY_DEBUG
 	clock_t end = clock();
 	double elapsed = double(end - begin) / CLOCKS_PER_SEC;
-	std::cout << "Load time:\t" << elapsed << " sec" << std::endl;
+	//std::cout << "Load time:\t" << elapsed << " sec" << std::endl;
 #endif
 
 	// Choose multi-target filter
@@ -271,7 +260,7 @@ void runFilter(MultiTargetFilter& _filter, Sensor& _sensor, Mixture& _mixture, p
 	TDMReader tdmReader;
 	bool tdm;
 	YAML::Emitter result;
-	ofstream outputCSV("Results/result_gmjott.csv") , 
+	ofstream outputCSV("Results/result_gmjott.csv"), 
 		outputYAML("Results/result_gmjott.yaml");		// Output file 
 	ifstream input;
 
@@ -438,7 +427,6 @@ void runFilter(MultiTargetFilter& _filter, Sensor& _sensor, Mixture& _mixture, p
 			VectorXd temp = Astro::temeToRAZEL(estimates[0].m, _sensor.getPosition(), _sensor.getDateJD(), _sensor.getLOD(), _sensor.getXp(), _sensor.getYp());
 			cout << estimates[0].w << " [" << estimates[0].tag[1] << "][" << estimates[0].tag[2] << "] " << temp(0);
 		}
-			
 		
 		cout << endl;
 #ifdef MY_DEBUG
@@ -447,7 +435,7 @@ void runFilter(MultiTargetFilter& _filter, Sensor& _sensor, Mixture& _mixture, p
 	}
 
 	outputYAML << result.c_str();
-
+	
 	outputCSV.close();
 	outputYAML.close();
 }

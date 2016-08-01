@@ -81,7 +81,7 @@ fadbad::F<double> zdotSEZtoRAZEL(const fadbad::F<double> _x, const fadbad::F<dou
 * <param name = "x"> A constant reference to initial state vector </param>
 * <param name = "dxdt"> A reference to the variable that should contain the derivative of the initial state vector with respect to time </param>
 */
-void integrateOrbit(const state_type &x, state_type &dxdt, const double /* t */)
+void integrateOrbit(const state_type &x, state_type &dxdt, const double /* t */, const VectorXd _noise)
 {
 	double r3 = pow(sqrt(x[0] * x[0] + x[1] * x[1] + x[2] * x[2]), 3.0);
 
@@ -90,9 +90,9 @@ void integrateOrbit(const state_type &x, state_type &dxdt, const double /* t */)
 	dxdt[0] = x[3];
 	dxdt[1] = x[4];
 	dxdt[2] = x[5];
-	dxdt[3] = -Astro::MU_E * x[0] / r3;
-	dxdt[4] = -Astro::MU_E * x[1] / r3;
-	dxdt[5] = -Astro::MU_E * x[2] / r3;
+	dxdt[3] = -Astro::MU_E * x[0] / r3 + _noise(0);
+	dxdt[4] = -Astro::MU_E * x[1] / r3 + _noise(1);
+	dxdt[5] = -Astro::MU_E * x[2] / r3 + _noise(2);
 }
 
 /*
@@ -726,7 +726,7 @@ namespace Astro
 	* <param name = "_dt"> Desired timestep. </param>
 	* <returns> VectorXd with the predicted state. </returns>
 	*/
-	VectorXd integrationPrediction(const VectorXd& _state, const double& _dt) {
+	VectorXd integrationPrediction(const VectorXd& _state, const double& _dt, const VectorXd& _noise) {
 		
 		VectorXd result(6);
 
@@ -739,7 +739,8 @@ namespace Astro
 		x0[4] = _state(4);
 		x0[5] = _state(5);
 
-		boost::numeric::odeint::integrate(integrateOrbit, x0, 0.0, _dt, _dt / 100);
+		auto tmp = std::bind(&integrateOrbit, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, _noise);
+		boost::numeric::odeint::integrate(tmp, x0, 0.0, _dt, _dt / 100);
 
 		result << x0[0], x0[1], x0[2], x0[3], x0[4], x0[5];
 

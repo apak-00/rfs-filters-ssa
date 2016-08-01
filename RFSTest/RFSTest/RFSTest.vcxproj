@@ -30,9 +30,9 @@
     <ClInclude Include="GMRFSFilter.h" />
     <ClInclude Include="IOHelpers.h" />
     <ClInclude Include="KalmanFilter.h" />
+    <ClInclude Include="MathHelpers.hpp" />
     <ClInclude Include="Sensor.h" />
     <ClInclude Include="SingleTargetFilter.h" />
-    <ClInclude Include="TestFilter.h" />
     <ClInclude Include="UnscentedKalmanFilter.h" />
     <ClInclude Include="unscented_sampler.hpp" />
   </ItemGroup>
@@ -46,7 +46,6 @@
     <ClCompile Include="KalmanFilter.cpp" />
     <ClCompile Include="Sensor.cpp" />
     <ClCompile Include="Source.cpp" />
-    <ClCompile Include="TestFilter.cpp" />
     <ClCompile Include="UnscentedKalmanFilter.cpp" />
   </ItemGroup>
   <ItemGroup>

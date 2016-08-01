@@ -3,6 +3,7 @@
 #include "GMRFSFilter.h"
 #include "Sensor.h"
 #include "gmm.h"
+#include "MathHelpers.hpp"
 
 /*
 * <summary> Gaussian Mixture Joint Target Detection and Tracking Filter class. </summary>
@@ -106,7 +107,7 @@ public:
 	*/
 	void update(gaussian_mixture & _gmm, Sensor & _sensor)
 	{
-		double cz = 1.0 / 57903 * 21;
+		double cz = 1.0 / 57903 * 50;
 		//double cz = 0.1;// 1.0 / 231609.0;			// Temporary fix for cz
 
 		auto pD = _sensor.getPD();
@@ -123,13 +124,7 @@ public:
 				gaussian_component gct(_gmm[j]);
 				filter->update(gct, _sensor, i);
 				
-				//VectorXd razel = Astro::temeToRAZEL(gct.m, _sensor.getPosition(), _sensor.getDateJD(), _sensor.getLOD(), _sensor.getXp(), _sensor.getYp());
-
-				VectorXd sez = Astro::temeToSEZ(gct.m, _sensor.getPosition(), _sensor.getDateJD(), _sensor.getLOD(), _sensor.getXp(), _sensor.getYp());
-				
-				double mah = _sensor.zMahalanobis(sez, i);
-				//std::cout << "S: " << std::endl << _sensor.getS() << std::endl;
-				//std::cout << "Mah: " << mah << std::endl;
+				double mah = MathHelpers::mahalanobis(_sensor.getZ(i), _sensor.getPredictedZ(), _sensor.getS());
 				auto qk = (1.0 / sqrt(pow(2.0 * M_PI, _sensor.getZDim()) * _sensor.getS().determinant())) * exp(-0.5 * mah);
 				gct.w *= qk / (_sensor.getLambda() * cz);
 

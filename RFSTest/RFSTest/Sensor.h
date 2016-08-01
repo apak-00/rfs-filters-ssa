@@ -19,8 +19,6 @@ class Sensor
 	friend class KalmanFilter;  // For ease of access during update step
 	friend class ExtendedKalmanFilter;
 	friend class UnscentedKalmanFilter;
-	friend class TestFilter;
-	friend class EKF;
 	friend class GMPHDFilter;
 
 protected:
@@ -35,6 +33,9 @@ protected:
 	MatrixXd R;         // Observation noise
 	MatrixXd H;         // Observation matrix (state space -> observation space)
 	MatrixXd S;
+
+	// TODO: Remove in the future
+	VectorXd predictedZ;
 
 	VectorXd position;  // Sensor positionin WGS-84
 	VectorXd bearing;   // Sensor bearing and bearing rates
@@ -83,6 +84,9 @@ public:
 	const auto getXp() const { return xp; }
 	const auto getYp() const { return yp; }
 	const auto getLOD() const { return lod; }
+
+	// TODO: Remove in the future
+	const auto getPredictedZ() const { return predictedZ; }
  
 	void setPD(const decltype(pD)& _pD) { pD = _pD; }
 	void setLambda(const decltype(lambda) & _lambda) { lambda = _lambda; }
@@ -102,6 +106,9 @@ public:
 	void setXp(const decltype (xp)& _xp) { xp = _xp; }
 	void setYp(const decltype (yp)& _yp) { yp = _yp; }
 	void setLOD(const decltype(lod)& _lod) { lod = _lod; }
+
+	// TODO: Remove in the future
+	void setPredictedZ(const decltype(predictedZ)& _pz) { predictedZ = _pz; }
 };
 
 #endif // SENSOR_H
