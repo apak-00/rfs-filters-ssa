@@ -1,4 +1,10 @@
 # c20140228_1010_19045_TOD COSMOS-1939
+# c20140228_1020_14819_TOD COSMOS-1544
+# c20140228_1056_27386_TOD ENVISAT
+# c20141110_1133_25544_TOD
+# c20150126_1147_27386_TOD
+# c20150126_1341_24277_TOD
+
 filename:	Data/c20140228_1020_14819_TOD.tdm
 input_type:	tdm
 
@@ -13,7 +19,7 @@ sensor_configuration:
   kappa:		1
   lambda:		1
   clutter:		1
-  R:			[0.05041, 0.05, 0.05]
+  R:			[0.005041, 0.05, 0.05]
   
 filter_parameters_single_target:
   type:				ukf
@@ -22,7 +28,7 @@ filter_parameters_single_target:
   dt:				0.07
 
 filter_parameters_multiple_target:
-  type:				gmjott
+  type:				bgmjott
   gm_max_size:		100
   birth_type:		uniform
   birth_num:		1
@@ -38,4 +44,4 @@ filter_parameters_multiple_target:
   
 temp:
   clutter_mult_temp:	1
-  ukf_sigma_sampler_w:	0.2
+  ukf_sigma_sampler_w:	0.5

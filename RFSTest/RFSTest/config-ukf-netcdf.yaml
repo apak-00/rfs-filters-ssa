@@ -1,8 +1,7 @@
-# c20140228_1010_19045_TOD COSMOS-1939
-# c20140228_1020_14819_TOD COSMOS-1544
-# c20140228_1056_27386_TOD ENVISAT
-filename:	Data/c20140228_1010_19045_TOD.tdm
-input_type:	tdm
+# radar-camra-felixx_20150224105654_39574_lev1.nc
+# radar-camra-felixx_20150224092323_39574_lev1.nc
+filename:	I:/Raw Chilbolton/Results/100-5-10e-3/radar-camra-felixx_20150224105654_39574_lev1.txt
+input_type:	csv_netcdf_cfar
 
 sensor_configuration:
   type:						radar
@@ -15,10 +14,10 @@ sensor_configuration:
   kappa:		1
   lambda:		1
   clutter:		1
-  R:			[0.005041, 0.05, 0.05] # 0.01 works interesting
-
+  R:			[0.005041, 0.005, 0.005]
+  
 filter_parameters_single_target:
-  type:				ekf
+  type:				ukf
   state_dim:		6
   motion_model:		cv			
   dt:				0.07

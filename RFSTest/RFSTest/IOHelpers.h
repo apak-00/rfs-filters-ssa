@@ -86,6 +86,8 @@ namespace IOHelpers
 		vector<double> readEntry();
 		Eigen::VectorXd readEntryEigen();
 
+		bool isOpen();
+
 		static void TDMDirToCSV(const string & _s);
 		static void TDMToYAML(const string & _filename);
 
@@ -132,7 +134,17 @@ namespace IOHelpers
 	{
 		using fType = F;
 		auto d = _sensor.getDate();
-		VectorXd z = _sensor.getZ(0);
+		VectorXd z;
+
+		if (_sensor.getZ().size())
+		{
+			z = _sensor.getZ(0);
+		}
+		else
+		{
+			z = VectorXd::Zero(_sensor.getZDim());
+		}
+
 		size_t sDim = _sensor.getSDim();
 
 		VectorXd sensorPosTEME = Astro::ecefToTEME(Astro::geodeticToECEF(_sensor.getPosition()), _sensor.getDateJD(), _sensor.getLOD(), _sensor.getXp(), _sensor.getYp());

@@ -37,7 +37,7 @@ void testSingleTargetFilter(parameters & _p);
 // Test
 int main(int arcg, char** argv) 
 {	
-	string filename_params = "config-ukf.yaml";
+	string filename_params = "config-bgmjott-ukf-tdm.yaml";
 	parameters p = readParametersYAML(filename_params);
 	testFilter(p);
 	//testSingleTargetFilter(p);
@@ -258,10 +258,10 @@ void runFilter(MultiTargetFilter& _filter, Sensor& _sensor, Mixture& _mixture, p
 
 	// IO
 	TDMReader tdmReader;
-	bool tdm;
-	YAML::Emitter result;
-	ofstream outputCSV("Results/result_gmjott.csv"), 
-		outputYAML("Results/result_gmjott.yaml");		// Output file 
+	bool tdm = false;
+	//YAML::Emitter result;
+	ofstream outputCSV("Results/result_gmjott.csv");
+		//outputYAML("Results/result_gmjott.yaml");		// Output file 
 	ifstream input;
 
 #ifdef MY_DEBUG
@@ -273,10 +273,25 @@ void runFilter(MultiTargetFilter& _filter, Sensor& _sensor, Mixture& _mixture, p
 
 	if (!strcmp(_p.inputType.c_str(), "tdm")) {
 		tdmReader.open(_p.filename);
+		if (!tdmReader.isOpen())
+		{
+			cout << ".tdm file is not open." << endl;
+			return;
+		}
+			
 		tdm = true;
 	}
 	else if (!strcmp(_p.inputType.c_str(), "csv_netcdf_cfar"))
+	{
 		input.open(_p.filename);
+		if (!input.is_open())
+		{
+			cout << ".netcdf processed file is not open." << endl;
+			return;
+		}
+			
+	}
+		
 
 	// Main loop 
 	for (size_t i = 0; i < 2e5; i++)
@@ -293,9 +308,12 @@ void runFilter(MultiTargetFilter& _filter, Sensor& _sensor, Mixture& _mixture, p
 		else
 		{
 			infoTemp = readNetCDFProcessedEntry(input);
+			
 			if (!infoTemp.size())
 				break;
 			info << 0, infoTemp(7), infoTemp(8), 0, 0, infoTemp.segment(1, 6);
+			//cout << infoTemp.transpose() << endl;
+			//cout << info.transpose() << endl;
 		}
 
 		if (!info.size())
@@ -339,6 +357,8 @@ void runFilter(MultiTargetFilter& _filter, Sensor& _sensor, Mixture& _mixture, p
 
 #ifdef MY_DEBUG
 		bool output_ = false;
+			
+
 		end = clock();
 		elapsed[0] = elapsedSeconds(start, end);
 
@@ -416,17 +436,22 @@ void runFilter(MultiTargetFilter& _filter, Sensor& _sensor, Mixture& _mixture, p
 #endif
 
 		printEstimatesToCSVFull(_filter, outputCSV, estimates, _sensor, i, 0);
-		printEstimatesToYAMLFull(_filter, result, estimates, _sensor, i, 0);
+		//printEstimatesToYAMLFull(_filter, result, estimates, _sensor, i, 0);
 
 		// Console output
-		cout << i << " " <<  _sensor.getZ(0)(0) << " [" << estimates.size() << "/" << _mixture.size() << "][" << _filter.getQ() << "]\t"
-			<< dateCurr.hour << ":" << dateCurr.minute << ":" << dateCurr.sec << " ";
+		double z;
+		if (!_sensor.getZ().size())
+			z = 0;
+		else
+			z = _sensor.getZ(0)(0);
 
+		cout << i << " " << z << " [" << estimates.size() << "/" << _mixture.size() << "][" << _filter.getQ() << "]";
+		
 		if (!estimates.empty()) 
 		{
 			VectorXd temp = Astro::temeToRAZEL(estimates[0].m, _sensor.getPosition(), _sensor.getDateJD(), _sensor.getLOD(), _sensor.getXp(), _sensor.getYp());
 			cout << estimates[0].w << " [" << estimates[0].tag[1] << "][" << estimates[0].tag[2] << "] " << temp(0);
-		}
+		} 
 		
 		cout << endl;
 #ifdef MY_DEBUG
@@ -434,8 +459,8 @@ void runFilter(MultiTargetFilter& _filter, Sensor& _sensor, Mixture& _mixture, p
 #endif
 	}
 
-	outputYAML << result.c_str();
+	//outputYAML << result.c_str();
 	
 	outputCSV.close();
-	outputYAML.close();
+	//outputYAML.close();
 }

@@ -3,7 +3,7 @@
 #include "GMRFSFilter.h"
 #include "Sensor.h"
 #include "gmm.h"
-#include "MathHelpers.hpp"
+#include "MathHelpers.h"
 
 /*
 * <summary> Gaussian Mixture Joint Target Detection and Tracking Filter class. </summary>
@@ -13,7 +13,7 @@ class GMJoTTFilter : public GMRFSFilter<gaussian_mixture>
 protected:
 	double q;						// Probability of target existence
 
-	size_t nBirthComponents;	// Number of birth components
+	size_t nBirthComponents;	    // Number of birth components
 	double birthIntensity;			// Birth intensity
 	double pS;						// Probability of target survival
 	double pB;						// Probabilirt of target birth
@@ -77,7 +77,10 @@ public:
 				birthRanges.push_back((double)(i + 2) * 200);
 
 			if (nBirthComponents == 1)
-				birthRanges[0] = 1000;
+			{
+				birthRanges[0] = 1000 + rand() % 500 - 250;
+			}
+				
 
 			// Birth
 			for (size_t i = 0; (i < nBirthComponents) && (_gmm.size() < _gmm.nMax); i++)
@@ -107,8 +110,7 @@ public:
 	*/
 	void update(gaussian_mixture & _gmm, Sensor & _sensor)
 	{
-		double cz = 1.0 / 57903 * 50;
-		//double cz = 0.1;// 1.0 / 231609.0;			// Temporary fix for cz
+		double cz = 1.0 / 57903 * 200; // 200 UKF 42 EKF
 
 		auto pD = _sensor.getPD();
 		size_t n0 = _gmm.size();
@@ -124,8 +126,8 @@ public:
 				gaussian_component gct(_gmm[j]);
 				filter->update(gct, _sensor, i);
 				
-				double mah = MathHelpers::mahalanobis(_sensor.getZ(i), _sensor.getPredictedZ(), _sensor.getS());
-				auto qk = (1.0 / sqrt(pow(2.0 * M_PI, _sensor.getZDim()) * _sensor.getS().determinant())) * exp(-0.5 * mah);
+				auto qk = (1.0 / sqrt(pow(2.0 * M_PI, _sensor.getZDim()) * _sensor.getS().determinant())) 
+					* exp(-0.5 * MathHelpers::mahalanobis(_sensor.getZ(i), _sensor.getPredictedZ(), _sensor.getS()));
 				gct.w *= qk / (_sensor.getLambda() * cz);
 
 				delta_k += gct.w;

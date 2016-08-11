@@ -60,8 +60,6 @@ public:
 	Sensor(const Sensor& _sensor);
 	Sensor& operator=(const Sensor& _sensor);
 
-	double zMahalanobis(const VectorXd & mean, const size_t& _mN);
-
 	double getDateJD() const;
 
 	/* Accessors and mutators */

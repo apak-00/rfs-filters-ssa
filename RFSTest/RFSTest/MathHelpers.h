@@ -1,5 +1,10 @@
 #pragma once
 #include <Eigen/Core>
-#include <Eigen/LU>
 
 using namespace Eigen;
+
+namespace MathHelpers {
+
+	double mahalanobis(VectorXd _v1, VectorXd _v2, MatrixXd _S);
+	
+}

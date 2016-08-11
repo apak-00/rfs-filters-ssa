@@ -157,6 +157,11 @@ namespace IOHelpers
 
 		return e;
 	}
+
+	 bool TDMReader::isOpen()
+	 {
+		 return inputFile.is_open();
+	 }
 	
 	/**
 	 * <summary> Opens the input file stream of the .file if it was not invoked in the constructor. </summary>

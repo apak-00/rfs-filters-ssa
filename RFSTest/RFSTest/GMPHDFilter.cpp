@@ -61,7 +61,8 @@ void GMPHDFilter::update(gaussian_mixture& _gmm, Sensor & _sensor)
 			filter->update(gct, _sensor, i);
 
 			// GMPHD paper, formula 20, likelihood (???)
-			auto q = (1 / sqrt(pow(2 * M_PI, _sensor.getZDim()) * _sensor.getS().determinant())) * exp(-0.5 * _sensor.zMahalanobis(gct.m,i));
+			auto q = (1.0 / sqrt(pow(2.0 * M_PI, _sensor.getZDim()) * _sensor.getS().determinant()))
+				* exp(-0.5 * MathHelpers::mahalanobis(_sensor.getZ(i), _sensor.getPredictedZ(), _sensor.getS()));
 			gct.w *= pD * q;
 			weightSum += gct.w;
 

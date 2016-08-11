@@ -68,6 +68,8 @@ void UnscentedKalmanFilter::predict(gaussian_component & _gc)
 			sigmaPointsPredicted[i] = Astro::integrationPrediction(mean, dt, sigmaPoints[i].tail(3));
 	}
 
+	//sigmaWeights[0] += 1 - alpha * alpha + beta;
+
 	// Reconstruct the mean and covariance
 	// Mean
 	for (size_t i = 0; i < sigmaPoints.size(); i++)
@@ -133,18 +135,6 @@ void UnscentedKalmanFilter::update(gaussian_component & _gc, Sensor& _sensor, co
 		recZ += sigmaPointsProjected[i].head(3) * sigmaWeights[i];
 	}
 
-	if (debug)
-	{
-		cout << _gc.P << endl;
-		cout << "Sigma Points: " << endl;
-		for (size_t i = 0; i < sigmaPoints.size(); i++)
-			cout << sigmaPoints[i].transpose() << endl;
-	
-		cout << "Sigma Points Projected: " << endl;
-		for (size_t i = 0; i < sigmaPointsProjected.size(); i++)
-			cout << sigmaPointsProjected[i].transpose() << endl;
-	}
-
 	//sigmaWeights[0] += 1 - alpha * alpha + beta;
 
 	for (size_t i = 0; i < sigmaPoints.size(); i++) 
@@ -164,18 +154,6 @@ void UnscentedKalmanFilter::update(gaussian_component & _gc, Sensor& _sensor, co
 
 	// Kalman Update
 	K = recPZZ.transpose().llt().solve(recPXZ.transpose()).transpose();
-
-	if (debug)
-	{
-		cout << "recZ: " << recZ.transpose() << endl;
-		cout << "recPZZ: " << endl << recPZZ << endl;
-		cout << "recPXZ: " << endl << recPXZ << endl;
-		cout << "K: " << endl << K << endl;
-		cout << "recPZZ (inverse): " << endl << recPZZ.inverse() << endl;
-
-		auto d = _sensor.z[_zNum] - recZ;
-		cout << "MAh Test" << endl << d.transpose() * recPZZ.llt().solve(d) << endl;
-	}
 
 	VectorXd oldM = _gc.m;
 	MatrixXd oldP = _gc.P;

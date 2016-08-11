@@ -1,7 +1,8 @@
 #pragma once
 #include <vector>
 #include <Eigen\Core>
-#include "MathHelpers.h"
+#include <Eigen/LU>
+
 
 using namespace Eigen;
 
