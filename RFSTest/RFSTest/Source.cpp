@@ -438,6 +438,8 @@ void runFilter(MultiTargetFilter& _filter, Sensor& _sensor, Mixture& _mixture, p
 		printEstimatesToCSVFull(_filter, outputCSV, estimates, _sensor, i, 0);
 		//printEstimatesToYAMLFull(_filter, result, estimates, _sensor, i, 0);
 
+		
+
 		// Console output
 		double z;
 		if (!_sensor.getZ().size())

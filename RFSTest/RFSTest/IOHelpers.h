@@ -168,9 +168,6 @@ namespace IOHelpers
 
 			// Estimate TEME
 			printVector(_os, T::getEmptyInfo());
-
-			_os << endl;
-
 		}
 		else
 		{
@@ -193,10 +190,21 @@ namespace IOHelpers
 				// Estimate TEME
 				//printVector(_os, i.m);
 				_os << i;
-
-				_os << endl;
 			}
 		}
+
+		if (true)
+		{
+			_os << ",";
+			VectorXd tempZ(6);
+			tempZ << _sensor.getZ(0), 0, 0, 0;
+			VectorXd tempZTEME = Astro::razelToTEME(tempZ, _sensor.getPosition(), _sensor.getDateJD(), _sensor.getLOD(), _sensor.getXp(), _sensor.getYp());
+			printVector(_os, tempZTEME);
+			//cout << tempZTEME.transpose() << endl;
+		}
+
+		_os << endl;
+		 
 	}
 
 	/*
