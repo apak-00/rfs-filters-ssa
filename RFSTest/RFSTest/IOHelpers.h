@@ -193,7 +193,7 @@ namespace IOHelpers
 			}
 		}
 
-		if (true)
+		if (false)
 		{
 			_os << ",";
 			VectorXd tempZ(6);

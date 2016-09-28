@@ -23,8 +23,12 @@ GMPHDFilter::GMPHDFilter(std::shared_ptr<KalmanFilter> _kf, const unsigned int &
  * <summary> Prediction step of the GM PHD filter. </summary>
  * <param name = "_gmm"> A reference to the Gaussian Mixture to be precited. </param>
  */
-void GMPHDFilter::predict(gaussian_mixture & _gmm)
+void GMPHDFilter::predict(gaussian_mixture & _gmm, Sensor& _sensor)
 {
+	double range;
+	std::vector<double> birthRanges;
+	VectorXd birth(_gmm.dim());
+
 	// Prediction for all of the components
 	for (auto &gc : _gmm.components) {
 		filter->predict(gc);
@@ -33,12 +37,42 @@ void GMPHDFilter::predict(gaussian_mixture & _gmm)
 
 	// New target birth
 	double initialWeight = birthIntensity / nBirthComponents;
+
+	if (_sensor.getZ().size() != 0)
+	{
+		for (size_t i = 0; i < nBirthComponents; i++)
+			birthRanges.push_back((double)(i + 2) * 200);
+
+		if (nBirthComponents == 1)
+		{
+			birthRanges[0] = 1000; // + rand() % 500 - 250;
+		}
+
+		for (size_t i = 0; (i < nBirthComponents) && (_gmm.size() < _gmm.nMax); i++)
+		{
+			// Uniform birth test
+			range = birthRanges[i];
+
+			if (_gmm.dim() == 2)
+				birth << range, 0;
+			else if (_gmm.dim() == 6)
+			{
+				VectorXd m(_gmm.dim());
+				m << range, _sensor.getBearing(), 0, 0, 0;
+				birth = Astro::razelToTEME(m, _sensor.getPosition(), _sensor.getDateJD(), _sensor.getLOD(), _sensor.getXp(), _sensor.getYp());
+			}
+			_gmm.addComponent(gaussian_component(birth, initialCovariance, initialWeight, _gmm.idCounter++));
+		}
+	}
+	
+		/*
 	for (size_t i = 0; (i < nBirthComponents) && (_gmm.size() < _gmm.nMax); i++)
 		// Changed 22/4/2016
 		_gmm.addComponent(gaussian_component(gaussian_mixture::randVec(lowerBound, upperBound), initialCovariance, initialWeight, _gmm.idCounter++));
+		*/
 }
 
-/**
+	/**
  * <summary> Update step of the GM PHD Filter. </summary>
  * <param name = "_sensor"> A reference to the sensor to read the measurements from. </sensor>
  */
@@ -60,13 +94,13 @@ void GMPHDFilter::update(gaussian_mixture& _gmm, Sensor & _sensor)
 			gaussian_component gct(_gmm[j]);
 			filter->update(gct, _sensor, i);
 
-			// GMPHD paper, formula 20, likelihood (???)
+			// Gaussian likelihood
 			auto q = (1.0 / sqrt(pow(2.0 * M_PI, _sensor.getZDim()) * _sensor.getS().determinant()))
 				* exp(-0.5 * MathHelpers::mahalanobis(_sensor.getZ(i), _sensor.getPredictedZ(), _sensor.getS()));
 			gct.w *= pD * q;
 			weightSum += gct.w;
 
-			if (gct.w > 1e-7) 
+			//if (gct.w > 1e-7) 
 				_gmm.addComponent(gct);
 		}
 

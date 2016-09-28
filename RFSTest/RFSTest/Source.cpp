@@ -29,6 +29,8 @@ const double DEG2RAD = M_PI / 180.0;
 void testFilter(parameters& _p);
 template <typename MultiTargetFilter, typename Mixture>
 void runFilter(MultiTargetFilter& _filter, Sensor& _sensor, Mixture& _mixture, parameters& _p);
+template <typename MultiTargetFilter, typename Mixture>
+void runPHDFilter(MultiTargetFilter& _filter, Sensor& _sensor, Mixture& _mixture, parameters& _p);
 
 // Temporary testing functions
 void testTransformations();
@@ -37,7 +39,7 @@ void testSingleTargetFilter(parameters & _p);
 // Test
 int main(int arcg, char** argv) 
 {	
-	string filename_params = "config-bgmjott-ukf-tdm.yaml";
+	string filename_params = "config-gmphd-tdm.yaml";
 	parameters p = readParametersYAML(filename_params);
 	testFilter(p);
 	//testSingleTargetFilter(p);
@@ -211,7 +213,15 @@ void testFilter(parameters & _p)
 			VectorXd::Zero(_p.stateDim), VectorXd::Zero(_p.stateDim), _p.qInit, _p.pB, _p.epsilon);
 		beta_gaussian_mixture bgm(_p.stateDim, _p.gaussianMixtureMaxSize);
 		runFilter(bgmjott, sensor, bgm, _p);
+	} 
+	
+	else if (!strcmp(_p.multipleTargetFilterType.c_str(), "gmphd")) {
+		GMPHDFilter gmphd(kf, _p.birthSize, _p.birthIntensity, _p.pS, _p.birthCovariance,
+			VectorXd::Zero(_p.stateDim), VectorXd::Zero(_p.stateDim));
+		gaussian_mixture gm(_p.stateDim, _p.gaussianMixtureMaxSize);
+		runPHDFilter(gmphd, sensor, gm, _p);
 	}
+	
 }
 
 void testTransformations()
@@ -438,8 +448,6 @@ void runFilter(MultiTargetFilter& _filter, Sensor& _sensor, Mixture& _mixture, p
 		printEstimatesToCSVFull(_filter, outputCSV, estimates, _sensor, i, 0);
 		//printEstimatesToYAMLFull(_filter, result, estimates, _sensor, i, 0);
 
-		
-
 		// Console output
 		double z;
 		if (!_sensor.getZ().size())
@@ -463,6 +471,226 @@ void runFilter(MultiTargetFilter& _filter, Sensor& _sensor, Mixture& _mixture, p
 
 	//outputYAML << result.c_str();
 	
+	outputCSV.close();
+	//outputYAML.close();
+}
+
+/**
+* <summary> GMPHD filter test. </summary>
+*/
+template <typename MultiTargetFilter, typename Mixture>
+void runPHDFilter(MultiTargetFilter& _filter, Sensor& _sensor, Mixture& _mixture, parameters& _p)
+{
+	VectorXd info(11), infoTemp, bearing(2), temp(3);
+	auto measurements = _sensor.getZ();
+	auto estimates = _mixture.getEstimates(1);
+	bool dtCalculated = false;
+	Astro::date datePrev, dateCurr;
+
+	double deg2rad = M_PI / 180.0;
+
+	// IO
+	TDMReader tdmReader;
+	bool tdm = false;
+	//YAML::Emitter result;
+	ofstream outputCSV("Results/result_gmphd.csv");
+	//outputYAML("Results/result_gmjott.yaml");		// Output file 
+	ifstream input;
+
+#ifdef MY_DEBUG
+	// Debug
+	vector<double> elapsed(6);
+	clock_t start, end;
+	double elapsedTotal;
+#endif
+
+	if (!strcmp(_p.inputType.c_str(), "tdm")) {
+		tdmReader.open(_p.filename);
+		if (!tdmReader.isOpen())
+		{
+			cout << ".tdm file is not open." << endl;
+			return;
+		}
+
+		tdm = true;
+	}
+	else if (!strcmp(_p.inputType.c_str(), "csv_netcdf_cfar"))
+	{
+		input.open(_p.filename);
+		if (!input.is_open())
+		{
+			cout << ".netcdf processed file is not open." << endl;
+			return;
+		}
+
+	}
+
+
+	// Main loop 
+	for (size_t i = 0; i < 2e5; i++)
+	{
+#ifdef MY_DEBUG
+		start = clock();
+#endif
+		// Read input
+		if (tdm) {
+			info = tdmReader.readEntryEigen();
+			if (!info.size())
+				break;
+		}
+		else
+		{
+			infoTemp = readNetCDFProcessedEntry(input);
+
+			if (!infoTemp.size())
+				break;
+			info << 0, infoTemp(7), infoTemp(8), 0, 0, infoTemp.segment(1, 6);
+			//cout << infoTemp.transpose() << endl;
+			//cout << info.transpose() << endl;
+		}
+
+		if (!info.size())
+			break;
+
+		if (info(1) > 360.0)
+			info(1) -= 360.0;
+		info(1) = 180.0 - info(1);		// Azimuth correction (?)
+
+		info(1) *= deg2rad;
+		info(2) *= deg2rad;
+
+		dateCurr = Astro::date((int)info(5), (int)info(6), (int)info(7),
+			(int)info(8), (int)info(9), info(10));
+
+		if (!dtCalculated)
+		{
+			datePrev = dateCurr;
+			dtCalculated = true;
+			continue;
+		}
+
+		_filter.setT(dateCurr - datePrev);
+		datePrev = dateCurr;
+
+		measurements.clear();
+		// Check input type
+		if (tdm)
+			measurements.push_back(info.segment(0, _p.observationDim));
+		else
+			for (size_t j = 0; j < infoTemp(9); j++) {
+				temp << infoTemp(10 + j), info(1), info(2);
+				measurements.push_back(temp);
+			}
+
+		bearing << info(1), info(2);
+
+		_sensor.setDate(dateCurr);
+		_sensor.setZ(measurements);
+		_sensor.setBearing(bearing);
+
+#ifdef MY_DEBUG
+		bool output_ = false;
+
+
+		end = clock();
+		elapsed[0] = elapsedSeconds(start, end);
+
+		if (output_)
+			cout << "[" << i << "] " << setprecision(4) << " Meas: " << measurements[0].transpose() << endl;
+
+		// Predict
+		start = clock();
+
+		_filter.predict(_mixture, _sensor);
+
+		if (output_)
+		{
+			cout << "Predict:" << endl;
+			printMixtureRAZEL(_mixture, _sensor);
+		}
+
+		end = clock();
+		elapsed[1] = elapsedSeconds(start, end);
+
+		// Update
+		start = clock();
+
+		if (output_)
+		{
+			//cout << "Update:" << endl;
+			//printMixtureRAZEL(_mixture, _sensor);
+		}
+
+		_filter.update(_mixture, _sensor);
+		end = clock();
+		elapsed[2] = elapsedSeconds(start, end);
+
+		// Merge
+		start = clock();
+		_mixture.merge(_p.mergeThreshold);
+		end = clock();
+		elapsed[3] = elapsedSeconds(start, end);
+
+		// Prune
+		start = clock();
+		_mixture.prune(_p.pruneThreshold);
+		end = clock();
+		elapsed[4] = elapsedSeconds(start, end);
+
+		if (output_)
+		{
+			cout << "Update (m/p):" << endl;
+			printMixtureRAZEL(_mixture, _sensor);
+		}
+
+		start = clock();
+		estimates = _mixture.getEstimates(_p.estimateThreshold);
+		end = clock();
+		elapsed[5] = elapsedSeconds(start, end);
+
+		elapsedTotal = accumulate(elapsed.begin(), elapsed.end(), 0.0);			// Total execution time
+
+		//cout << setprecision(5) << "Measurements:\t" << elapsed[0] << " sec" << endl;
+		//cout << "Predict:\t" << elapsed[1] << " sec" << endl;
+		//cout << "Update:\t\t" << elapsed[2] << " sec" << endl;
+		//cout << "Merge:\t\t" << elapsed[3] << " sec" << endl;
+		//cout << "Prune:\t\t" << elapsed[4] << " sec" << endl;
+		//cout << "Estimates:\t" << elapsed[5] << " sec" << endl;
+		//cout << "Total: \t\t" << elapsedTotal << " sec" << endl;
+
+		//system("pause");
+
+#else
+		_filter.predict(_mixture, _sensor);
+		_filter.update(_mixture, _sensor);
+		_mixture.merge(_p.mergeThreshold);
+		_mixture.prune(_p.pruneThreshold);
+		estimates = _mixture.getEstimates(_p.estimateThreshold);
+#endif
+
+		printEstimatesToCSVFull(_filter, outputCSV, estimates, _sensor, i, 0);
+		//printEstimatesToYAMLFull(_filter, result, estimates, _sensor, i, 0);
+
+		// Console output
+		double z;
+		if (!_sensor.getZ().size())
+			z = 0;
+		else
+			z = _sensor.getZ(0)(0);
+
+		cout << i << " " << z << " [" << estimates.size() << "/" << _mixture.size() << "]";
+
+		if (!estimates.empty())
+		{
+			VectorXd temp = Astro::temeToRAZEL(estimates[0].m, _sensor.getPosition(), _sensor.getDateJD(), _sensor.getLOD(), _sensor.getXp(), _sensor.getYp());
+			cout << estimates[0].w << " [" << estimates[0].tag[1] << "][" << estimates[0].tag[2] << "] " << temp(0);
+		}
+
+		cout << endl;
+	}
+
+	//outputYAML << result.c_str();
+
 	outputCSV.close();
 	//outputYAML.close();
 }

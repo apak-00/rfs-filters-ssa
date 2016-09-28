@@ -24,6 +24,7 @@
     <ClInclude Include="Debug.h" />
     <ClInclude Include="ExtendedKalmanFilter.h" />
     <ClInclude Include="CFARProcessor.h" />
+    <ClInclude Include="GMCPHDFilter.h" />
     <ClInclude Include="GMJoTTFilter.hpp" />
     <ClInclude Include="gmm.h" />
     <ClInclude Include="GMPHDFilter.h" />
@@ -40,6 +41,7 @@
     <ClCompile Include="Astro.cpp" />
     <ClCompile Include="ExtendedKalmanFilter.cpp" />
     <ClCompile Include="CFARProcessor.cpp" />
+    <ClCompile Include="GMCPHDFilter.cpp" />
     <ClCompile Include="gmm.cpp" />
     <ClCompile Include="GMPHDFilter.cpp" />
     <ClCompile Include="IOHelpers.cpp" />

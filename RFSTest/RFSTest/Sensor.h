@@ -20,6 +20,7 @@ class Sensor
 	friend class ExtendedKalmanFilter;
 	friend class UnscentedKalmanFilter;
 	friend class GMPHDFilter;
+	friend class GMCPHDFilter;
 
 protected:
 	size_t zDim;  // Observation dimension

@@ -80,6 +80,15 @@ void gaussian_mixture::merge(const double & _mergeThreshold)
 	components = temp;
 }
 
+ VectorXd gaussian_mixture::getWeightsVector()
+ {
+	 VectorXd result(components.size());
+
+	 for (size_t i = 0; i < components.size(); i++)
+		 result(i) = components[i].w;
+	 return result;
+ }
+
 /* ----------------------------------------------------------------------- */
 /* --------------------- Gaussian Component ------------------------------ */
 /* ----------------------------------------------------------------------- */

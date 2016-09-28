@@ -95,6 +95,9 @@ struct gaussian_mixture : mixture<gaussian_component> {
 
 	/* GMM-related functions */
 	virtual void merge(const double& _mergeThreshold);
+
+	/* Other additional functions*/
+	VectorXd getWeightsVector();
 };
 
 // Beta Gaussian Mixture

@@ -80,7 +80,6 @@ public:
 			{
 				birthRanges[0] = 1000 + rand() % 500 - 250;
 			}
-				
 
 			// Birth
 			for (size_t i = 0; (i < nBirthComponents) && (_gmm.size() < _gmm.nMax); i++)

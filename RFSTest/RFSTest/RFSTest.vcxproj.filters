@@ -24,9 +24,6 @@
     <ClInclude Include="Sensor.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="GMPHDFilter.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="GMJoTTFilter.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -63,6 +60,12 @@
     <ClInclude Include="MathHelpers.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="GMPHDFilter.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GMCPHDFilter.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="gmm.cpp">
@@ -96,6 +99,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="MathHelpers.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="GMCPHDFilter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
