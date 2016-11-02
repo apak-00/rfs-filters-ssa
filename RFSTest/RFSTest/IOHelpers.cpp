@@ -320,6 +320,10 @@ namespace IOHelpers
 		params.clutterMultiplierTemp = config["temp"]["clutter_mult_temp"].as<double>();
 		params.ukfSigmaSamplerW = config["temp"]["ukf_sigma_sampler_w"].as<double>();
 
+		params.pmx = config["other"]["polar_motion_x"].as<double>();
+		params.pmy = config["other"]["polar_motion_y"].as<double>();
+		params.lod = config["other"]["length_of_day"].as<double>();
+
 		return params;
 	}
 

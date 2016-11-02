@@ -40,7 +40,7 @@ void UnscentedKalmanFilter::predict(gaussian_component & _gc)
 	// Noise (acceleration)
 	MatrixXd noiseP = MatrixXd::Identity(noiseSize, noiseSize);
 	if (!noiseSize)
-		noiseP *= 1e-6;
+		noiseP *= 1e-2;
 
 	// Augmentation
 	VectorXd augM = VectorXd::Zero(stateSize + noiseSize);

@@ -25,10 +25,11 @@ using namespace IOHelpers;
 
 const double DEG2RAD = M_PI / 180.0;
 
-// Function for JoTT testing
+// JoTT testing
 void testFilter(parameters& _p);
 template <typename MultiTargetFilter, typename Mixture>
 void runFilter(MultiTargetFilter& _filter, Sensor& _sensor, Mixture& _mixture, parameters& _p);
+// PHD testing
 template <typename MultiTargetFilter, typename Mixture>
 void runPHDFilter(MultiTargetFilter& _filter, Sensor& _sensor, Mixture& _mixture, parameters& _p);
 
@@ -36,16 +37,20 @@ void runPHDFilter(MultiTargetFilter& _filter, Sensor& _sensor, Mixture& _mixture
 void testTransformations();
 void testSingleTargetFilter(parameters & _p);
 
-// Test
+// Main
 int main(int arcg, char** argv) 
 {	
-	string filename_params = "config-gmphd-tdm.yaml";
+	string filename_params = "config-ukf-tdm.yaml";
 	parameters p = readParametersYAML(filename_params);
 	testFilter(p);
 	//testSingleTargetFilter(p);
 	return 0; 
 }
 
+/*
+ * <summary> Tests single-target filters (KF, EKF, UKF) </summary>
+ * <param name = "_p"> YAML parameters. </param>
+ */
 void testSingleTargetFilter(parameters & _p) {
 
 	VectorXd entry, measurement(3), temp(6), bearing(2), sensorPos;
@@ -112,8 +117,8 @@ void testSingleTargetFilter(parameters & _p) {
 	gaussian_component gc(temp, _p.birthCovariance, 0, 0);
 
 	// Main loop
-	for (size_t i = 0; i < 1e4 ; i++) {
-
+	for (size_t i = 0; i < 1e4 ; i++) 
+	{
 		// Read entry
 		entry = readSimulatedEntry(input);
 
@@ -132,13 +137,12 @@ void testSingleTargetFilter(parameters & _p) {
 		measurements.clear();
 		measurements.push_back(measurement);
 
-		//cout << dateCurr << " dt: " << dt << " | Meas: " << measurement.transpose() << endl;
-
 		sensor.setDate(dateCurr);
 		sensor.setBearing(bearing);
 		sensor.setZ(measurements);
 
-		if (i >= 0) {
+		if (i >= 0) 
+		{
 			debug_ = false;
 			kf->debug = true;
 		}
@@ -165,6 +169,10 @@ void testSingleTargetFilter(parameters & _p) {
 	output.close();
 }
 
+/*
+* <summary> Tests JoTT filters (GM-JoTT, BGM-JoTT, r-JoTT) </summary>
+* <param name = "_p"> YAML parameters. </param>
+*/
 void testFilter(parameters & _p)
 {
 #ifdef MY_DEBUG
@@ -221,9 +229,11 @@ void testFilter(parameters & _p)
 		gaussian_mixture gm(_p.stateDim, _p.gaussianMixtureMaxSize);
 		runPHDFilter(gmphd, sensor, gm, _p);
 	}
-	
 }
 
+/*
+* <summary> Temporary transformation testing function (RAZEL, ECEF, ECI) </summary>
+*/
 void testTransformations()
 {
 	VectorXd geo(3);
@@ -253,7 +263,7 @@ void testTransformations()
 }
  
 /**
-* <summary> GMJoTT filter test. </summary>
+* <summary> JoTT filter test. GM </summary>
 */
 template <typename MultiTargetFilter, typename Mixture>
 void runFilter(MultiTargetFilter& _filter, Sensor& _sensor, Mixture& _mixture, parameters& _p)
@@ -269,9 +279,12 @@ void runFilter(MultiTargetFilter& _filter, Sensor& _sensor, Mixture& _mixture, p
 	// IO
 	TDMReader tdmReader;
 	bool tdm = false;
-	//YAML::Emitter result;
-	ofstream outputCSV("Results/result_gmjott.csv");
-		//outputYAML("Results/result_gmjott.yaml");		// Output file 
+	YAML::Emitter result, resultSmoothing;
+	result << YAML::BeginSeq;
+	resultSmoothing << YAML::BeginSeq;
+	ofstream outputCSV("Results/result_gmjott.csv"),
+	outputYAML("Results/result_gmjott.yaml"),
+	outputYAMLSmoothing("Results/result_gmjott_smoothing.yaml");		// Output file 
 	ifstream input;
 
 #ifdef MY_DEBUG
@@ -288,7 +301,7 @@ void runFilter(MultiTargetFilter& _filter, Sensor& _sensor, Mixture& _mixture, p
 			cout << ".tdm file is not open." << endl;
 			return;
 		}
-			
+
 		tdm = true;
 	}
 	else if (!strcmp(_p.inputType.c_str(), "csv_netcdf_cfar"))
@@ -299,10 +312,8 @@ void runFilter(MultiTargetFilter& _filter, Sensor& _sensor, Mixture& _mixture, p
 			cout << ".netcdf processed file is not open." << endl;
 			return;
 		}
-			
 	}
 		
-
 	// Main loop 
 	for (size_t i = 0; i < 2e5; i++)
 	{
@@ -322,8 +333,6 @@ void runFilter(MultiTargetFilter& _filter, Sensor& _sensor, Mixture& _mixture, p
 			if (!infoTemp.size())
 				break;
 			info << 0, infoTemp(7), infoTemp(8), 0, 0, infoTemp.segment(1, 6);
-			//cout << infoTemp.transpose() << endl;
-			//cout << info.transpose() << endl;
 		}
 
 		if (!info.size())
@@ -350,11 +359,13 @@ void runFilter(MultiTargetFilter& _filter, Sensor& _sensor, Mixture& _mixture, p
 		datePrev = dateCurr;
 		
 		measurements.clear();
+
 		// Check input type
 		if (tdm)
 			measurements.push_back(info.segment(0, _p.observationDim));
 		else
-			for (size_t j = 0; j < infoTemp(9); j++) {
+			for (size_t j = 0; j < infoTemp(9); j++) 
+			{
 				temp << infoTemp(10 + j), info(1), info(2);
 				measurements.push_back(temp);
 			}
@@ -368,7 +379,6 @@ void runFilter(MultiTargetFilter& _filter, Sensor& _sensor, Mixture& _mixture, p
 #ifdef MY_DEBUG
 		bool output_ = false;
 			
-
 		end = clock();
 		elapsed[0] = elapsedSeconds(start, end);
 
@@ -446,7 +456,8 @@ void runFilter(MultiTargetFilter& _filter, Sensor& _sensor, Mixture& _mixture, p
 #endif
 
 		printEstimatesToCSVFull(_filter, outputCSV, estimates, _sensor, i, 0);
-		//printEstimatesToYAMLFull(_filter, result, estimates, _sensor, i, 0);
+		printEstimatesToYAMLFull(_filter, result, estimates, _sensor, i, 0);
+		printMixtureToYAML(_filter, resultSmoothing, _mixture, _sensor, 10);
 
 		// Console output
 		double z;
@@ -469,10 +480,16 @@ void runFilter(MultiTargetFilter& _filter, Sensor& _sensor, Mixture& _mixture, p
 #endif
 	}
 
-	//outputYAML << result.c_str();
-	
+	result << YAML::EndSeq;
+	outputYAML << result.c_str();
+
+	resultSmoothing << YAML::EndSeq;
+	outputYAMLSmoothing << resultSmoothing.c_str();
+
+	// Close the output files
 	outputCSV.close();
-	//outputYAML.close();
+	outputYAML.close();
+	outputYAMLSmoothing.close();
 }
 
 /**
@@ -493,7 +510,7 @@ void runPHDFilter(MultiTargetFilter& _filter, Sensor& _sensor, Mixture& _mixture
 	TDMReader tdmReader;
 	bool tdm = false;
 	//YAML::Emitter result;
-	ofstream outputCSV("Results/result_gmphd.csv");
+	ofstream outputCSV("Results/result_gmjott.csv");
 	//outputYAML("Results/result_gmjott.yaml");		// Output file 
 	ifstream input;
 
@@ -524,7 +541,6 @@ void runPHDFilter(MultiTargetFilter& _filter, Sensor& _sensor, Mixture& _mixture
 		}
 
 	}
-
 
 	// Main loop 
 	for (size_t i = 0; i < 2e5; i++)

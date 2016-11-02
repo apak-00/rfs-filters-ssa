@@ -63,6 +63,11 @@ namespace IOHelpers
 		// Temporary parameters
 		double clutterMultiplierTemp;
 		double ukfSigmaSamplerW;
+
+		// Other
+		double pmx;
+		double pmy;
+		double lod;
 	};
 
 	/*
@@ -219,14 +224,12 @@ namespace IOHelpers
 	template<typename T, typename F>
 	inline void printEstimatesToYAMLFull(F& _filter, YAML::Emitter& _yamle, const vector<T>& _estimates, Sensor& _sensor, const size_t& _id, const double& _elapsed = 0) 
 	{
-		using fType = F;
 		auto d = _sensor.getDate();
 		VectorXd z = _sensor.getZ(0);
 		size_t sDim = _sensor.getSDim();
-
-		_yamle << YAML::Flow;
-
 		VectorXd sensorPosTEME = Astro::ecefToTEME(Astro::geodeticToECEF(_sensor.getPosition()), _sensor.getDateJD(), _sensor.getLOD(), _sensor.getXp(), _sensor.getYp());
+		
+		_yamle << YAML::Flow;
 
 		for (auto i : _estimates)
 		{
@@ -251,6 +254,46 @@ namespace IOHelpers
 
 			// Miscellaneous
 			_yamle << i.w << i.tag[1] << i.P.determinant() << i.P.block<3, 3>(0, 0).determinant() << i.P.block<3, 3>(3, 3).determinant();
+
+			_yamle << YAML::EndSeq;
+		}
+	}
+
+
+	template<typename M, typename F>
+	inline void printMixtureToYAML(F& _filter, YAML::Emitter& _yamle, const M& _mixture, Sensor& _sensor, const size_t& _printSize)
+	{
+		auto d = _sensor.getDate();
+		VectorXd z = _sensor.getZ(0);
+		size_t sDim = _sensor.getSDim();
+		VectorXd sensorPosTEME = Astro::ecefToTEME(Astro::geodeticToECEF(_sensor.getPosition()), _sensor.getDateJD(), _sensor.getLOD(), _sensor.getXp(), _sensor.getYp());
+		
+		size_t n = _mixture.size();
+		if (n > _printSize)
+			n = _printSize;
+
+		for (size_t i = 0; i < n; i++)
+		{
+			auto gc = _mixture[i];
+
+			_yamle << YAML::Flow << YAML::BeginSeq << d.year << d.month << d.day << d.hour << d.minute << d.sec
+				<< z(0) << z(1) << z(2);
+			
+			// Sensor position TEME
+			for (size_t j = 0; j < sDim; j++)
+				_yamle << sensorPosTEME(j);
+
+			// Estimate RAZEL
+			VectorXd eRAZEL = Astro::temeToRAZEL(gc.m, _sensor.getPosition(), _sensor.getDateJD(), _sensor.getLOD(), _sensor.getXp(), _sensor.getYp());
+			for (size_t j = 0; j < sDim; j++)
+				_yamle << eRAZEL(j);
+
+			// Estimate TEME
+			for (size_t j = 0; j < sDim; j++)
+				_yamle << gc.m(j);
+
+			// Miscellaneous
+			_yamle << gc.w << gc.tag[1] << gc.P.determinant() << gc.P.block<3, 3>(0, 0).determinant() << gc.P.block<3, 3>(3, 3).determinant();
 
 			_yamle << YAML::EndSeq;
 		}

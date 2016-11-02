@@ -145,7 +145,7 @@ void GMCPHDFilter::update(gaussian_mixture & _gmm, Sensor & _sensor)
 
 	for (size_t l = 0; l < zSize; l++)
 	{
-		esfValsD.row(l) = MathHelpers::esf();
+		//esfValsD.row(l) = MathHelpers::esf();
 	}
 
 	

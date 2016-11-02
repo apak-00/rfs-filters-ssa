@@ -12,6 +12,7 @@ class GMJoTTFilter : public GMRFSFilter<gaussian_mixture>
 {
 protected:
 	double q;						// Probability of target existence
+	double qPred;
 
 	size_t nBirthComponents;	    // Number of birth components
 	double birthIntensity;			// Birth intensity
@@ -25,6 +26,7 @@ protected:
 
 public:
 	auto getQ() { return q; }
+	auto getQPred() { return qPred; }
 	auto getT() { return filter->getT(); }
 	
 	/**
@@ -58,8 +60,9 @@ public:
 	void predict(gaussian_mixture & _gmm, Sensor& _sensor)
 	{
 		// Probability of target existence
-		double qPred = pB * (1 - q) + pS * q, range;
-		double initialWeight = (birthIntensity / nBirthComponents) * pB * (1 - q) / qPred;
+		double range, initialWeight;
+		qPred = pB * (1 - q) + pS * q;
+		initialWeight = (birthIntensity / nBirthComponents) * pB * (1 - q) / qPred;
 		std::vector<double> birthRanges;
 		VectorXd birth(_gmm.dim());
 

@@ -20,6 +20,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Astro.h" />
+    <ClInclude Include="BernoulliSmoother.h" />
     <ClInclude Include="BGMJoTTFilter.hpp" />
     <ClInclude Include="Debug.h" />
     <ClInclude Include="ExtendedKalmanFilter.h" />
@@ -39,6 +40,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Astro.cpp" />
+    <ClCompile Include="BernoulliSmoother.cpp" />
     <ClCompile Include="ExtendedKalmanFilter.cpp" />
     <ClCompile Include="CFARProcessor.cpp" />
     <ClCompile Include="GMCPHDFilter.cpp" />
@@ -53,6 +55,10 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="ClassDiagram.cd" />
+    <None Include="config-bgmjott-ukf-tdm.yaml" />
+    <None Include="config-gmphd-tdm.yaml" />
+    <None Include="config-ukf-netcdf.yaml" />
+    <None Include="config-ukf-tdm.yaml" />
     <None Include="config.yaml" />
     <None Include="packages.config" />
   </ItemGroup>

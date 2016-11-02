@@ -300,3 +300,14 @@ inline std::ostream & operator<<(std::ostream & _os, const mixture<T> & _m)
 	return _os;
 }
 
+/*
+ * <summary> Gaussian Bernoulli model for smoother. <summary>
+ * <date> October 14, 2016 </date>
+ */
+template <typename T>
+struct gaussian_bernoulli_model
+{
+	T gmixture;				// Gaussian Mixture
+	double r;				// Probability of target existence (q)
+	double rPredicted;		// Predicted probability of target existence (qPred)
+};

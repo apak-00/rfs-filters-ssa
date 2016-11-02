@@ -66,6 +66,9 @@
     <ClInclude Include="GMCPHDFilter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="BernoulliSmoother.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="gmm.cpp">
@@ -104,6 +107,9 @@
     <ClCompile Include="GMCPHDFilter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="BernoulliSmoother.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
@@ -111,5 +117,17 @@
       <Filter>Resource Files</Filter>
     </None>
     <None Include="ClassDiagram.cd" />
+    <None Include="config-bgmjott-ukf-tdm.yaml">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="config-gmphd-tdm.yaml">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="config-ukf-netcdf.yaml">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="config-ukf-tdm.yaml">
+      <Filter>Resource Files</Filter>
+    </None>
   </ItemGroup>
 </Project>
