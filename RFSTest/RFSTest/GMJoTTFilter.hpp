@@ -1,6 +1,6 @@
 #pragma once
 #include <Eigen/Dense>
-#include "GMRFSFilter.h"
+#include "RFSFilter.h"
 #include "Sensor.h"
 #include "gmm.h"
 #include "MathHelpers.h"
@@ -8,11 +8,10 @@
 /*
 * <summary> Gaussian Mixture Joint Target Detection and Tracking Filter class. </summary>
 */
-class GMJoTTFilter : public GMRFSFilter<gaussian_mixture>
+class GMJoTTFilter : public RFSFilter<gaussian_mixture>
 {
 protected:
-	double q;						// Probability of target existence
-	double qPred;
+	double q, qPred;				// Probability of target existence
 
 	size_t nBirthComponents;	    // Number of birth components
 	double birthIntensity;			// Birth intensity

@@ -33,6 +33,5 @@ public:
 	static VectorXd getCVq(const size_t& _dim, const double& _dt);
 
 	bool debug = false;
-
 };
 

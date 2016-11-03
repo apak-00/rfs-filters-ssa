@@ -127,7 +127,7 @@ namespace IOHelpers
 
 	/*
 	 * <summary> Estimate output to .csv file. </summary>
-	 * <param name = "_filter"> A reference to the GMRFSFilter. </param>
+	 * <param name = "_filter"> A reference to the RFSFilter. </param>
 	 * <param name = "_os"> A reference to the output stream. </param>
 	 * <param name = "_estimates"> A reference to the vector of components (templated). </param>
 	 * <param name = "_sensor"> A reference to the sensor. </param>
@@ -214,7 +214,7 @@ namespace IOHelpers
 
 	/*
 	* <summary> Estimate output to .yaml file. </summary>
-	* <param name = "_filter"> A reference to the GMRFSFilter. </param>
+	* <param name = "_filter"> A reference to the RFSFilter. </param>
 	* <param name = "_yamle"> A reference to the associated YAML emitter. </param>
 	* <param name = "_estimates"> A reference to the vector of components (templated). </param>
 	* <param name = "_sensor"> A reference to the sensor. </param>

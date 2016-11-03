@@ -1,13 +1,13 @@
 #pragma once
 #include <Eigen/Dense>
-#include "GMRFSFilter.h"
+#include "RFSFilter.h"
 #include "Sensor.h"
 #include "gmm.h"
 
 /*
 * <summary> Beta-Gaussian Mixture Joint Target Detection and Tracking class. </summary>
 */
-class BGMJoTTFilter : public GMRFSFilter<beta_gaussian_mixture>
+class BGMJoTTFilter : public RFSFilter<beta_gaussian_mixture>
 {
 protected:
 	double q;						// Probability of target existence

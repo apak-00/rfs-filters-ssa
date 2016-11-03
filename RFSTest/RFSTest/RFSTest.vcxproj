@@ -29,12 +29,13 @@
     <ClInclude Include="GMJoTTFilter.hpp" />
     <ClInclude Include="gmm.h" />
     <ClInclude Include="GMPHDFilter.h" />
-    <ClInclude Include="GMRFSFilter.h" />
+    <ClInclude Include="RFSFilter.h" />
     <ClInclude Include="IOHelpers.h" />
     <ClInclude Include="KalmanFilter.h" />
     <ClInclude Include="MathHelpers.h" />
     <ClInclude Include="Sensor.h" />
     <ClInclude Include="SingleTargetFilter.h" />
+    <ClInclude Include="SMCJoTTFilter.hpp" />
     <ClInclude Include="UnscentedKalmanFilter.h" />
     <ClInclude Include="unscented_sampler.hpp" />
   </ItemGroup>
@@ -54,7 +55,6 @@
     <ClCompile Include="UnscentedKalmanFilter.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="ClassDiagram.cd" />
     <None Include="config-bgmjott-ukf-tdm.yaml" />
     <None Include="config-gmphd-tdm.yaml" />
     <None Include="config-ukf-netcdf.yaml" />

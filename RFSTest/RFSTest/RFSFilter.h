@@ -6,14 +6,14 @@
  * <summary> Gaussian Mixture Random Finite Set Filter class. </summary>
  */
 template <typename Mixture>
-class GMRFSFilter
+class RFSFilter
 {
 protected:
 	std::shared_ptr<KalmanFilter> filter;
 
 public:
-	GMRFSFilter() {};
-	~GMRFSFilter() {};
+	RFSFilter() {};
+	~RFSFilter() {};
 
 	virtual void predict(Mixture& _m, Sensor& _sensor) = 0;
 	virtual void update(Mixture& _m, Sensor& _sensor) = 0;

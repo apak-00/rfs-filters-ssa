@@ -1,13 +1,13 @@
 #pragma once
 #include <Eigen/Dense>
-#include "GMRFSFilter.h"
+#include "RFSFilter.h"
 #include "Sensor.h"
 #include "gmm.h"
 
 /*
 * <summary> Gaussian Mixture Probability Hypothesis Density Filter class. </summary>
 */
-class GMPHDFilter : public GMRFSFilter<gaussian_mixture>
+class GMPHDFilter : public RFSFilter<gaussian_mixture>
 {
 protected:
 

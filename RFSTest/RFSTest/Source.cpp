@@ -96,7 +96,7 @@ void testSingleTargetFilter(parameters & _p) {
 
 	// Read first entry
 	entry = readSimulatedEntry(input);
-	datePrev = Astro::date(entry(0), entry(1), entry(2), entry(3), entry(4), entry(5));
+	datePrev = Astro::date((int)entry(0), (int)entry(1), (int)entry(2), (int)entry(3), (int)entry(4), entry(5));
 	sensor.setDate(datePrev);
 	azRad = entry(7);
 	elRad = entry(8);
@@ -126,7 +126,7 @@ void testSingleTargetFilter(parameters & _p) {
 			break;
 
 		// Date
-		dateCurr = Astro::date(entry(0), entry(1), entry(2), entry(3), entry(4), entry(5));
+		dateCurr = Astro::date((int)entry(0), (int)entry(1), (int)entry(2), (int)entry(3), (int)entry(4), entry(5));
 		dt = dateCurr - datePrev;
 		kf->setT(dt);
 		datePrev = dateCurr;
@@ -210,22 +210,24 @@ void testFilter(parameters & _p)
 #endif
 
 	// Choose multi-target filter
-	if (!strcmp(_p.multipleTargetFilterType.c_str(), "gmjott")) {
+	if (!strcmp(_p.multipleTargetFilterType.c_str(), "gmjott")) 
+	{
 		GMJoTTFilter gmjott(kf, _p.birthSize, _p.birthIntensity, _p.pS, _p.birthCovariance,
 			VectorXd::Zero(_p.stateDim), VectorXd::Zero(_p.stateDim), _p.qInit, _p.pB);
 		gaussian_mixture gm(_p.stateDim, _p.gaussianMixtureMaxSize);
 		runFilter(gmjott, sensor, gm, _p);
 	}
-	else if (!strcmp(_p.multipleTargetFilterType.c_str(), "bgmjott")) {
+	else if (!strcmp(_p.multipleTargetFilterType.c_str(), "bgmjott")) 
+	{
 		BGMJoTTFilter bgmjott(kf, _p.birthSize, _p.birthIntensity, _p.pS, _p.birthCovariance,
 			VectorXd::Zero(_p.stateDim), VectorXd::Zero(_p.stateDim), _p.qInit, _p.pB, _p.epsilon);
 		beta_gaussian_mixture bgm(_p.stateDim, _p.gaussianMixtureMaxSize);
 		runFilter(bgmjott, sensor, bgm, _p);
 	} 
-	
-	else if (!strcmp(_p.multipleTargetFilterType.c_str(), "gmphd")) {
+	else if (!strcmp(_p.multipleTargetFilterType.c_str(), "gmphd")) 
+	{
 		GMPHDFilter gmphd(kf, _p.birthSize, _p.birthIntensity, _p.pS, _p.birthCovariance,
-			VectorXd::Zero(_p.stateDim), VectorXd::Zero(_p.stateDim));
+			VectorXd::Zero(_p.stateDim), VectorXd::Zero((_p.stateDim)));
 		gaussian_mixture gm(_p.stateDim, _p.gaussianMixtureMaxSize);
 		runPHDFilter(gmphd, sensor, gm, _p);
 	}

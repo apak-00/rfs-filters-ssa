@@ -406,9 +406,44 @@ void beta_gaussian_mixture::merge(const double & _mergeThreshold)
 
 /*
  * TODO: To be implemented
- * <summary> Calculates hellinger distance between Beta-Gaussian components. </summary>
+ * <summary> Calculates Hellinger distance between Beta-Gaussian components. </summary>
  */
 double beta_gaussian_mixture::betaHellinger(const beta_gaussian_component & _bgc1, const beta_gaussian_component & _bgc2)
 {
 	return 0.0;
+}
+
+// ---------- Particles ----------
+
+/*
+ * <summary> Constructor for particle. </summary>
+ */
+particle::particle(const VectorXd& _m, const double& _w) : m(_m), w(_w) {}
+
+/*
+ * <summary> A constructor for particle swarm. </summary>
+ */
+template<typename T>
+particle_swarm<T>::particle_swarm(const size_t & _n, const VectorXd & _mean, const double& _weight)
+{
+	particle p(_mean, _weight);
+	particles = std::vector(_n, p);
+}
+
+/*
+ * <summary> A copy constructor for particle swarm. </summary>
+ */
+template<typename T>
+particle_swarm<T>::particle_swarm(const particle_swarm<T>& _pc) : particles(_pc.particles) {}
+
+/*
+ * <summary> Addition operator overload for particle swarm. <summary>
+ */
+template<typename T>
+particle_swarm<T> particle_swarm<T>::operator+(const particle_swarm<T>& _pc) const
+{
+	// TODO: Optimize?
+	particle_swarm<T> result(this);
+	result.particles.insert(std::end(particles), std::begin(_pc.particles), std::end(_pc.particles));
+	return result;
 }

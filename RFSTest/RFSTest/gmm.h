@@ -311,3 +311,29 @@ struct gaussian_bernoulli_model
 	double r;				// Probability of target existence (q)
 	double rPredicted;		// Predicted probability of target existence (qPred)
 };
+
+/*
+ * <summary> Particle for SMC. </summary>
+ */
+struct particle 
+{
+	VectorXd m;			// Mean
+	double w;			// Weight
+
+	particle(const VectorXd& _m, const double& _w);
+};
+
+/*
+ * <summary> Particle swarm for SMC </summary>
+ */
+template<typename T>
+struct particle_swarm
+{
+	std::vector<T> particles;
+
+	particle_swarm(const size_t& _n, const VectorXd& _mean = VectorXd(), const double& _weight = 0);
+	particle_swarm(const particle_swarm<T>& _pc);
+
+	particle_swarm<T> operator+ (const particle_swarm<T>& _gc) const;
+
+};
