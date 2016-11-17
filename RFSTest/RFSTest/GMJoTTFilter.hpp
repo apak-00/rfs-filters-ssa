@@ -127,6 +127,7 @@ public:
 				gaussian_component gct(_gmm[j]);
 				filter->update(gct, _sensor, i);
 				
+
 				auto qk = (1.0 / sqrt(pow(2.0 * M_PI, _sensor.getZDim()) * _sensor.getS().determinant())) 
 					* exp(-0.5 * MathHelpers::mahalanobis(_sensor.getZ(i), _sensor.getPredictedZ(), _sensor.getS()));
 				gct.w *= qk / (_sensor.getLambda() * cz);

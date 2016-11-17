@@ -280,7 +280,7 @@ void runFilter(MultiTargetFilter& _filter, Sensor& _sensor, Mixture& _mixture, p
 
 	// IO
 	TDMReader tdmReader;
-	bool tdm = false;
+	bool tdm = false, sim = false;
 	YAML::Emitter result, resultSmoothing;
 	result << YAML::BeginSeq;
 	resultSmoothing << YAML::BeginSeq;
@@ -315,7 +315,17 @@ void runFilter(MultiTargetFilter& _filter, Sensor& _sensor, Mixture& _mixture, p
 			return;
 		}
 	}
-		
+	else if (!strcmp(_p.inputType.c_str(), "sim"))
+	{
+		input.open(_p.filename);
+		if (!input.is_open())
+		{
+			cout << ".csv simulation data file is not open." << endl;
+			return;
+		}
+		sim = true;
+	}
+
 	// Main loop 
 	for (size_t i = 0; i < 2e5; i++)
 	{
@@ -328,12 +338,16 @@ void runFilter(MultiTargetFilter& _filter, Sensor& _sensor, Mixture& _mixture, p
 			if (!info.size())
 				break;
 		}
+		// TODO: Change netCDF processing
+		// This option also reads simulated files, 
 		else
 		{
 			infoTemp = readNetCDFProcessedEntry(input);
 			
 			if (!infoTemp.size())
 				break;
+
+			// Y, M, D, H, M, S, R(gt/0), Az, Ele, n, z1 , .. zN
 			info << 0, infoTemp(7), infoTemp(8), 0, 0, infoTemp.segment(1, 6);
 		}
 

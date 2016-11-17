@@ -1,8 +1,10 @@
 #pragma once
 #include <vector>
+#include <algorithm>
+#include <numeric>
+#include <random>
 #include <Eigen\Core>
 #include <Eigen/LU>
-
 
 using namespace Eigen;
 
@@ -320,7 +322,9 @@ struct particle
 	VectorXd m;			// Mean
 	double w;			// Weight
 
-	particle(const VectorXd& _m, const double& _w);
+	particle();
+	particle(const size_t& dim, const double& _w = 0);
+	particle(const VectorXd& _m, const double& _w = 0);
 };
 
 /*
@@ -331,9 +335,17 @@ struct particle_swarm
 {
 	std::vector<T> particles;
 
-	particle_swarm(const size_t& _n, const VectorXd& _mean = VectorXd(), const double& _weight = 0);
+	particle_swarm();
+	particle_swarm(const size_t& _n, const size_t& _dim, const double& _w = 0);
 	particle_swarm(const particle_swarm<T>& _pc);
 
 	particle_swarm<T> operator+ (const particle_swarm<T>& _gc) const;
+
+	size_t size();
+
+	double weightSum();
+	
+	void normalize();
+	void resampleITS(const size_t& _size);
 
 };

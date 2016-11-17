@@ -1,13 +1,39 @@
 #include "MathHelpers.h"
 #include <Eigen/Dense>
 
-
+/*
+ * <summary> Computer Mahalanobis distance for a given pair of vectors and a common covariance. </summary>
+ */
 double MathHelpers::mahalanobis(VectorXd _v1, VectorXd _v2, MatrixXd _S)
 {
 	VectorXd d = _v1 - _v2;
 	return d.transpose() * _S.llt().solve(d);
 }
 
+/*
+ * <summary> Return the value of the univariate Laplace distribution for a give set of values. </summary>
+ * <param name = "_x"> Vaiable. </param>
+ * <param name = "_mu"> Location parameter (e.g. mean). </param>
+ * <param name = "_b"> Scale parameter. </param>
+ */
+double MathHelpers::laplace(const double & _x, const double & _mu, const double & _b)
+{
+	return 0.5 / _b * exp(-abs((_x - _mu)) / _b);
+}
+
+/*
+ * <summary> Compute Gaussian likelihood for a given pair of vectors and a common covariance. </summary>
+ */
+double MathHelpers::gaussianLikelihood(const VectorXd _z, const VectorXd _zPred, const MatrixXd _S)
+{
+	return (1.0 / sqrt(pow(2.0 * M_PI, _z.size()) * _S.determinant())) * exp(-0.5 * mahalanobis(_z, _zPred, _S));
+}
+
+/*
+ * <summary> Computes elementary symmetric functions. </summary>
+ * <par> For CPHD filter. </par>
+ * TODO: Complete
+ */
 VectorXd MathHelpers::esf(const VectorXd & _Z)
 {
 	if (!_Z.size())

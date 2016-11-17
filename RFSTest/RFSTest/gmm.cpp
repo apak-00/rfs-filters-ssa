@@ -414,25 +414,26 @@ double beta_gaussian_mixture::betaHellinger(const beta_gaussian_component & _bgc
 }
 
 // ---------- Particles ----------
-
 /*
- * <summary> Constructor for particle. </summary>
+ * <summary> Constructors for particle. </summary>
  */
-particle::particle(const VectorXd& _m, const double& _w) : m(_m), w(_w) {}
+particle::particle() : w(0) {}		// Empty constructor
+particle::particle(const size_t& _dim, const double& _w) : m(VectorXd::Zero(_dim)), w(_w) {}	// Zero constructor with dimenstion and weight
+particle::particle(const VectorXd& _m, const double& _w) : m(_m), w(_w) {}						// Constructor with mean and weight
 
 /*
- * <summary> A constructor for particle swarm. </summary>
+ * <summary> Constructors for particle swarm. </summary>
  */
 template<typename T>
-particle_swarm<T>::particle_swarm(const size_t & _n, const VectorXd & _mean, const double& _weight)
+particle_swarm<T>::particle_swarm() {}
+
+template<typename T>
+particle_swarm<T>::particle_swarm(const size_t & _n, const size_t & _dim, const double & _w)
 {
-	particle p(_mean, _weight);
+	particle p(_dim, _w);
 	particles = std::vector(_n, p);
 }
 
-/*
- * <summary> A copy constructor for particle swarm. </summary>
- */
 template<typename T>
 particle_swarm<T>::particle_swarm(const particle_swarm<T>& _pc) : particles(_pc.particles) {}
 
@@ -446,4 +447,77 @@ particle_swarm<T> particle_swarm<T>::operator+(const particle_swarm<T>& _pc) con
 	particle_swarm<T> result(this);
 	result.particles.insert(std::end(particles), std::begin(_pc.particles), std::end(_pc.particles));
 	return result;
+}
+
+/*
+ * <summary> Returns the size of the particles vector. </summary> 
+ */
+template<typename T>
+size_t particle_swarm<T>::size()
+{
+	return particles.size();
+}
+
+/*
+ * <summary> Returns the sum of the weights of the particles. </summary>
+ */
+template<typename T>
+double particle_swarm<T>::weightSum()
+{
+	double result = std::accumulate(particles.begin(), particles.end(), 0.0, [](double _sum, const T& _p) { return _sum + _p.w; });
+	//for (auto p : particles)
+	//	result += p.w;
+	return result;
+}
+
+/*
+ * <summary> Normalizes the weights of the particles. </summary>
+ */
+template<typename T>
+void particle_swarm<T>::normalize()
+{
+	double wSum = weightSum();
+	if (wSum != 1)
+		for (auto &p : particles)
+			p.w /= wSum;
+}
+
+/**
+ * <summary> Inverse transform sampling </summary>
+ */
+template<typename T>
+void particle_swarm<T>::resampleITS(const size_t& _size)
+{
+	double rIdx;
+	std::vector<double> cdf(particles.size());		// Cumulative distribution function
+	vector<T> resampled(_size);
+
+	if (weightSum() != 1)
+		normalize();
+
+	// Sort elements in the descending order
+	std::sort(particles.begin(), particles.end(), [](T a, T b) {return b.w < a.w; });
+
+	// Calculate the CDF
+	cdf[0] = particles[0].w;
+	for (size_t i = 1; i < particles.size(); i++)
+		cdf[i] += cdf[i - 1] + particles[i].w;
+
+	// Inverse Transform Sampling
+	// Random number generator;
+	std::random_device rDev;
+	std::mt19937 generator(rDev());
+	std::uniform_real_distribution<double> distribution(0.0, 1.0);
+
+	for (size_t i = 0; i < _size; i++)
+	{
+		rIdx = distribution(generator);		// Generate a random number between 0 and 1
+		// TODO: Optimize
+		// Get the closest particle index from the cdf
+		auto closest = std::min_element(particles.begin(), particles.end(),
+			[rIdx](T x, T y) {return abs(x.w - rIdx) < abs(y.w - tIdx); });
+		resampled[i] = *closest;
+	}
+
+	particles = resampled;
 }
