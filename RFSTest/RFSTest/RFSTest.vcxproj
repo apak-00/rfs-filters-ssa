@@ -58,6 +58,7 @@
     <None Include="config-bgmjott-ukf-tdm.yaml" />
     <None Include="config-gmphd-tdm.yaml" />
     <None Include="config-ukf-netcdf.yaml" />
+    <None Include="config-ukf-sim.yaml" />
     <None Include="config-ukf-tdm.yaml" />
     <None Include="config.yaml" />
     <None Include="packages.config" />

@@ -131,5 +131,8 @@
     <None Include="config-ukf-tdm.yaml">
       <Filter>Resource Files</Filter>
     </None>
+    <None Include="config-ukf-sim.yaml">
+      <Filter>Resource Files</Filter>
+    </None>
   </ItemGroup>
 </Project>

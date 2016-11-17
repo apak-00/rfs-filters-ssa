@@ -40,7 +40,7 @@ void testSingleTargetFilter(parameters & _p);
 // Main
 int main(int arcg, char** argv) 
 {	
-	string filename_params = "config-ukf-tdm.yaml";
+	string filename_params = "config-ukf-sim.yaml";
 	parameters p = readParametersYAML(filename_params);
 	testFilter(p);
 	//testSingleTargetFilter(p);
@@ -335,20 +335,26 @@ void runFilter(MultiTargetFilter& _filter, Sensor& _sensor, Mixture& _mixture, p
 		// Read input
 		if (tdm) {
 			info = tdmReader.readEntryEigen();
+
+			//cout << info.transpose() << endl;
+
 			if (!info.size())
 				break;
 		}
-		// TODO: Change netCDF processing
 		// This option also reads simulated files, 
 		else
 		{
 			infoTemp = readNetCDFProcessedEntry(input);
+			//cout << infoTemp.size() << endl;
+			//cout << infoTemp.transpose() << endl;
 			
 			if (!infoTemp.size())
 				break;
 
+			//cout << infoTemp.segment(0, 6).transpose() << endl;
+
 			// Y, M, D, H, M, S, R(gt/0), Az, Ele, n, z1 , .. zN
-			info << 0, infoTemp(7), infoTemp(8), 0, 0, infoTemp.segment(1, 6);
+			info << infoTemp(6), infoTemp(7), infoTemp(8), 0, 0, infoTemp.segment(0, 6);
 		}
 
 		if (!info.size())
@@ -472,8 +478,8 @@ void runFilter(MultiTargetFilter& _filter, Sensor& _sensor, Mixture& _mixture, p
 #endif
 
 		printEstimatesToCSVFull(_filter, outputCSV, estimates, _sensor, i, 0);
-		printEstimatesToYAMLFull(_filter, result, estimates, _sensor, i, 0);
-		printMixtureToYAML(_filter, resultSmoothing, _mixture, _sensor, 10);
+		//printEstimatesToYAMLFull(_filter, result, estimates, _sensor, i, 0);
+		//printMixtureToYAML(_filter, resultSmoothing, _mixture, _sensor, 10);
 
 		// Console output
 		double z;
@@ -496,11 +502,11 @@ void runFilter(MultiTargetFilter& _filter, Sensor& _sensor, Mixture& _mixture, p
 #endif
 	}
 
-	result << YAML::EndSeq;
-	outputYAML << result.c_str();
+	//result << YAML::EndSeq;
+	//outputYAML << result.c_str();
 
 	resultSmoothing << YAML::EndSeq;
-	outputYAMLSmoothing << resultSmoothing.c_str();
+	//outputYAMLSmoothing << resultSmoothing.c_str();
 
 	// Close the output files
 	outputCSV.close();
@@ -577,7 +583,7 @@ void runPHDFilter(MultiTargetFilter& _filter, Sensor& _sensor, Mixture& _mixture
 			if (!infoTemp.size())
 				break;
 			info << 0, infoTemp(7), infoTemp(8), 0, 0, infoTemp.segment(1, 6);
-			//cout << infoTemp.transpose() << endl;
+			cout << infoTemp.transpose() << endl;
 			//cout << info.transpose() << endl;
 		}
 
@@ -613,6 +619,11 @@ void runPHDFilter(MultiTargetFilter& _filter, Sensor& _sensor, Mixture& _mixture
 				temp << infoTemp(10 + j), info(1), info(2);
 				measurements.push_back(temp);
 			}
+
+		cout << "Measurements" << endl;
+		for (auto mm : measurements)
+			cout << mm.transpose() << endl;
+
 
 		bearing << info(1), info(2);
 

@@ -126,7 +126,7 @@ public:
 		// If the effective number of particles is less than a threshold, resample:
 		if (nEff < nThreshold)
 		{
-
+			_ps.resampleITS(1000);
 		}
 
 	}

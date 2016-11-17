@@ -1,7 +1,4 @@
-# radar-camra-felixx_20150224105654_39574_lev1.nc
-# radar-camra-felixx_20150224092323_39574_lev1.nc
-# I:/Raw Chilbolton/Results/100-5-10e-3/radar-camra-felixx_20150224105654_39574_lev1.txt
-filename:	E:/Processed/Results_nc/radar-camra-felixx_20150224092323_39574_lev1.txt
+filename:	D:/Development/Git/Workspace/Matlab/CAMRa RFS 2016/simulation/camra-sim.csv
 input_type:	csv_netcdf_cfar
 
 sensor_configuration:
