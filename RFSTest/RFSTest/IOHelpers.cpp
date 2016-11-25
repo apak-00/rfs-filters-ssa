@@ -247,6 +247,7 @@ namespace IOHelpers
 	}
 
 	/**
+	 * // TODO: Add checks (if the parameter exists or not).
 	 * <summary> Reads the yaml parameters for the RFS SSA application. </summary>
 	 * <param name = "_filename"> A .yaml parameter file. </param>
 	 * <returns> Parameters structure. </returns>
@@ -295,7 +296,7 @@ namespace IOHelpers
 		params.multipleTargetFilterType = config["filter_parameters_multiple_target"]["type"].as<std::string>();
 		params.gaussianMixtureMaxSize = config["filter_parameters_multiple_target"]["gm_max_size"].as<size_t>();
 		params.birthType = config["filter_parameters_multiple_target"]["birth_type"].as<std::string>();
-		params.birthSize = config["filter_parameters_multiple_target"]["birth_num"].as<size_t>();
+		params.birthSize = config["filter_parameters_multiple_target"]["birth_num"].as<unsigned int>();
 
 		params.birthCovariance = MatrixXd::Zero(params.stateDim, params.stateDim);
 		for (size_t i = 0; i < params.stateDim; i++)
@@ -323,6 +324,28 @@ namespace IOHelpers
 		params.pmx = config["other"]["polar_motion_x"].as<double>();
 		params.pmy = config["other"]["polar_motion_y"].as<double>();
 		params.lod = config["other"]["length_of_day"].as<double>();
+
+		// Newly added 18/11/2016
+		if (config["filter_parameters_general"]["noise_acceleration"])
+		{
+			// TODO: Change the dimension
+			size_t d = 3;
+			params.noiseAcceleration = VectorXd::Zero(d);
+			
+			for (size_t i = 0; i < d; i++)
+				params.noiseAcceleration(i) = config["filter_parameters_general"]["noise_acceleration"][i].as<double>();
+		}
+
+		// Newly added 21/11/2016
+		if (config["filter_parameters_multiple_target"]["lower_birth_bound_range_razel"])
+			params.lowerBirthBoundRange = config["filter_parameters_multiple_target"]["lower_birth_bound_range_razel"].as<double>();
+		if (config["filter_parameters_multiple_target"]["upper_birth_bound_range_razel"])
+			params.upperBirthBoundRange = config["filter_parameters_multiple_target"]["upper_birth_bound_range_razel"].as<double>();
+		if (config["filter_parameters_multiple_target"]["birth_sigma_range"])
+			params.birthSigmaRange = config["filter_parameters_multiple_target"]["birth_sigma_range"].as<double>();
+
+		if (config["filter_parameters_multiple_target"]["smc_max_size"])
+			params.partcileSwarmSize = config["filter_parameters_multiple_target"]["smc_max_size"].as<size_t>();
 
 		return params;
 	}

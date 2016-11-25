@@ -69,9 +69,6 @@
     <ClInclude Include="RFSFilter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="SMCJoTTFilter.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="gmm.cpp">
@@ -116,22 +113,25 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
-    <None Include="config.yaml">
+    <None Include="config\config.yaml">
       <Filter>Resource Files</Filter>
     </None>
-    <None Include="config-bgmjott-ukf-tdm.yaml">
+    <None Include="config\config-bgmjott-ukf-tdm.yaml">
       <Filter>Resource Files</Filter>
     </None>
-    <None Include="config-gmphd-tdm.yaml">
+    <None Include="config\config-gmphd-tdm.yaml">
       <Filter>Resource Files</Filter>
     </None>
-    <None Include="config-ukf-netcdf.yaml">
+    <None Include="config\config-ukf-netcdf.yaml">
       <Filter>Resource Files</Filter>
     </None>
-    <None Include="config-ukf-tdm.yaml">
+    <None Include="config\config-ukf-sim.yaml">
       <Filter>Resource Files</Filter>
     </None>
-    <None Include="config-ukf-sim.yaml">
+    <None Include="config\config-ukf-tdm.yaml">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="config\config-smcjott.yaml">
       <Filter>Resource Files</Filter>
     </None>
   </ItemGroup>

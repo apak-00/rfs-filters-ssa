@@ -4,9 +4,10 @@
 
 BernoulliSmoother::BernoulliSmoother() {}
 
-void BernoulliSmoother::smooth(gaussian_bernoulli_model<gaussian_mixture> _gbmPrior, gaussian_bernoulli_model<gaussian_mixture> _gbmPosterior)
+void BernoulliSmoother::smooth(gaussian_bernoulli_model<gaussian_mixture> _gbmPrior, 
+	gaussian_bernoulli_model<gaussian_mixture> _gbmPosterior)
 {
-	double alphaR, betaR, alphaS, betaS, tempOne, tempTwo, smoothedR;
+	double alphaR, betaR, alphaS, betaS, tempOne, tempTwo; //smoothedR
 
 	tempOne = (1 - rCond) / (1 - _gbmPosterior.rPredicted);
 	tempTwo = rCond / _gbmPosterior.rPredicted;

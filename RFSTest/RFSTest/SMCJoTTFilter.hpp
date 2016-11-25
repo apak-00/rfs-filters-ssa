@@ -9,6 +9,10 @@
 class SMCJoTTFilter
 {
 protected:
+
+	std::random_device rDev;
+	std::mt19937 generator;
+
 	double q, qPred;
 
 	size_t nBirthComponents;
@@ -16,30 +20,63 @@ protected:
 	double pS, pB;
 	double dt;
 
-	// Birth
-	particle_swarm<particle> b;
+	// Temporary
+	double lowerBirthBoundRange;
+	double upperBirthBoundRange;
+	double birthSigmaRange;
 
-	std::function<VectorXd(const VectorXd&, const double&)> propagate;
+	// Propagation noise (temporary)
+	VectorXd noise;
+
+	// Birth
+	particle_mixture b;
+
+	std::function<VectorXd(const VectorXd&, const double&, const VectorXd&)> propagate;
 	std::function<VectorXd(const VectorXd&, const Sensor&)> observe;
 
 public:
-	auto getQ() { return q; }
-	auto getQPred() { return qPred; }
-	auto getT() { return dt; }
-
-	SMCJoTTFilter(std::function<VectorXd(const VectorXd&, const double&)> _propagate, 
+	SMCJoTTFilter(std::function<VectorXd(const VectorXd&, const double&, const VectorXd&)> _propagate, 
 		std::function<VectorXd(const VectorXd&, const Sensor&)> _observe, 
-		const size_t& _nBirthComponents, const double & _birthWeight, const double & _pS, const double& _pB, const double & _q) 
-		: nBirthComponents(_nBirthComponents), pS(_pS),  q(_q), pB(_pB)
+		const size_t& _nBirthComponents, const double & _birthWeight, const double & _pS, const double& _pB, const double & _q, 
+		VectorXd _noise) 
+		: nBirthComponents(_nBirthComponents), pS(_pS),  q(_q), pB(_pB), noise(_noise), b(_nBirthComponents, 6)
 	{
 		propagate = _propagate;
 		observe = _observe;
+
+		generator = std::mt19937(rDev());
+	}
+
+	auto getQ() { return q; }
+	auto getQPred() { return qPred; }
+	auto getT() { return dt; }
+	void setT(const double& _dt) { dt = _dt; }
+
+	// Temporary
+	// TODO: For the future: custom birth patterns
+	const auto getLowerBirthBoundRange() { return lowerBirthBoundRange; }
+	const auto getUpperBirthBoundRange() { return upperBirthBoundRange; }
+	const auto getBirthSigma() { return birthSigmaRange; }
+
+	void setLowerBirthBoundRange(const decltype(lowerBirthBoundRange)& _lowerBirthBoundRange) 
+	{
+		lowerBirthBoundRange = _lowerBirthBoundRange;
+	}
+
+	void setUpperBirthBoundRange(const decltype(upperBirthBoundRange)& _lowerBirthBoundRange)
+	{
+		upperBirthBoundRange = _lowerBirthBoundRange;
+	}
+
+	void setBirthSigmaRange(const decltype(birthSigmaRange)& _birthSigmaRange)
+	{
+		birthSigmaRange = _birthSigmaRange;
 	}
 
 	/*
-	 * <summary> Prediction</summary>
+	 * <summary> Prediction </summary>
 	 */
-	void predict(particle_swarm<particle>& _ps, Sensor& _sensor)
+	void predict(particle_mixture& _ps, Sensor& _sensor)
 	{		
 		double t, wb;
 
@@ -49,28 +86,66 @@ public:
 		t = pS * q / qPred;
 
 		// Mean prediction
-		for (auto &p : _ps.particles)
+		for (auto &p : _ps.components)
 		{
-			propagate(p.m, dt);
+			propagate(p.m, dt, noise);
 			p.w *= t;
 		}
 						
 		// Birth
 		wb = birthWeight * pB * (1 - q) / qPred;
-		b = particle_swarm<particle>(nBirthComponents, _sensor.getSDim(), wb);
+		auto zPrev = _sensor.getZPrev();
+		VectorXd tempBirth(6);
 
-		for (size_t i = 0; i < nBirthComponents; i++)
+		// If there are previous measurements, us their location to place birth components
+		if (!zPrev.size()) 
 		{
-			b.particles[i].m << 1000 + rand() % 500 - 250, _sensor.getBearing(), 0, 0, 0;
-			b.particles[i].m = Astro::razelToTEME(b.particles[i].m, _sensor.getPosition(), _sensor.getDateJD(), _sensor.getLOD(), _sensor.getXp(), _sensor.getYp());
-		}
-			
-		// Concatenate predicted and birth components
-		_ps = _ps + b;
+			// Number of birth components for each measurement
+			size_t birthSizeZ = nBirthComponents * zPrev.size();
 
+			// Number of mesurements @ previous timestep times number of particles to be born
+			b = particle_mixture(birthSizeZ, _sensor.getSDim(), wb);
+
+			for (size_t i = 0; i < birthSizeZ; i++) 
+			{
+				// The particles are born within a normal distribution centered at the position of the previous measurement
+				// At the moment, only range uncertainty is taken into account
+				// TODO: Change the constant standard deviation
+				std::normal_distribution<double> distribution(0, 10);
+
+				for (size_t j = 0; j < nBirthComponents; j++)
+				{
+					tempBirth << distribution(generator) + zPrev[i](0), zPrev[i](1), zPrev[i](2),  0, 0, 0;
+					b.components[i * nBirthComponents + j].m = Astro::razelToTEME(tempBirth, _sensor.getPosition(), _sensor.getDateJD(),
+						_sensor.getLOD(), _sensor.getXp(), _sensor.getYp());
+				}
+			}
+
+			// Concatenate predicted and birth components
+			_ps = _ps + b;
+		}
+		// If no measurements are received in the previous timestep, perform random birth
+		else
+		{
+			// Just a fixed number of particles in the 750 - 1250km range
+			// TODO: Change the fixed numbers. Again.
+			b = particle_mixture(nBirthComponents, _sensor.getSDim(), wb);
+			std::uniform_real_distribution<double> distribution(lowerBirthBoundRange, upperBirthBoundRange);
+
+			for (size_t i = 0; i < nBirthComponents; i++)
+			{
+				tempBirth << distribution(generator) + zPrev[i](0), _sensor.getBearing(), 0, 0, 0;
+				b.components[i].m = Astro::razelToTEME(tempBirth, _sensor.getPosition(), _sensor.getDateJD(),
+					_sensor.getLOD(), _sensor.getXp(), _sensor.getYp());
+			}
+
+		}
 	}
 
-	void update(particle_swarm<particle>& _ps, Sensor& _sensor)
+	/*
+	 * <summary> Update </summary>
+	 */
+	void update(particle_mixture& _ps, Sensor& _sensor)
 	{
 		double nThreshold = 200;
 		double cz = 1.0 / 57903 * 200;
@@ -79,8 +154,13 @@ public:
 		std::vector<double> ll(_ps.size(), 0);		// Likelihoods
 		size_t n = _ps.size();
 
-		VectorXd z = VectorXd::Zero(3), zPred = VectorXd::Zero(3);
-		
+		VectorXd z = VectorXd::Zero(3);
+		std::vector<VectorXd> zPred(_ps.size());
+
+		// Pre-calculate predicted measurements
+		for (size_t i = 0; i < _ps.size(); i++)
+			zPred[i] = observe(_ps.components[i].m, _sensor);
+
 		// For each measurement
 		for (size_t i = 0; i < _sensor.getZ().size(); i++) 
 		{
@@ -89,13 +169,11 @@ public:
 			I2 = 0;
 
 			// For each particle
-			for (size_t j = 0; j < _ps.particles.size(); j++)
+			for (size_t j = 0; j < _ps.components.size(); j++)
 			{
-				zPred = observe(_ps.particles[j].m, _sensor);
-				g = MathHelpers::gaussianLikelihood(z, zPred, _sensor.getS());	// Compute likelihood
+				g = MathHelpers::gaussianLikelihood(z, zPred[j], _sensor.getS());	// Compute likelihood
 				ll[j] += g;		// Likelihood sum
-
-				I2 += pD * g  * _ps.particles[j].w;		// Approximate I2 integral (85)
+				I2 += pD * g * _ps.components[j].w;		// Approximate I2 integral (85)
 			}
 
 			delta_k += I2;
@@ -105,30 +183,16 @@ public:
 		q = (1 - delta_k) / (1 - q * delta_k) * q;
 
 		// Update the weights (87)
-		for (size_t i = 0; i < _ps.particles.size(); i++)
-			_ps.particles[i].w = (1 - pD + pD * ll[i] / cz) * _ps.particles[i].w;
+		for (size_t i = 0; i < _ps.components.size(); i++)
+			_ps.components[i].w = (1 - pD + pD * ll[i] / cz) * _ps.components[i].w;
 		
 		// Normalize the weights
-		wSum = _ps.weightSum;
-		for (auto &p : _ps.particles)
-			p.w /= wSum;
-
-		// TODO: MCMC Move
+		_ps.normalizeWeights();
 		
 		// Sampling importance re-sampling
-		double nEff = 0;
-
-		for (auto p : _ps.particles)
-			nEff += p.w * p.w;
-
-		nEff = 1 / nEff;
-
 		// If the effective number of particles is less than a threshold, resample:
-		if (nEff < nThreshold)
-		{
+		if (_ps.getEffectiveN() < nThreshold)
 			_ps.resampleITS(1000);
-		}
-
 	}
 };
 

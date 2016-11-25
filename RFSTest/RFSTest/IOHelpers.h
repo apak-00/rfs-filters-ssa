@@ -48,7 +48,7 @@ namespace IOHelpers
 		std::string multipleTargetFilterType;	// Type of the multi-target filter (e.g. GMPHD, GMJoTT, etc.)
 		size_t gaussianMixtureMaxSize;			// Maximum size of th Gaussian Mixture
 		std::string birthType;					// Birth type (uniform birth is used atm, can be changed to random)
-		size_t birthSize;						// Number of birth components per timestep
+		unsigned int birthSize;						// Number of birth components per timestep
 		MatrixXd birthCovariance;				// Initial covariance matrix of the birth components
 		double mergeThreshold;					// Merge threshold of the Gaussian Mixture
 		double pruneThreshold;					// Prune threshold of the Gaussian Mixture
@@ -68,6 +68,17 @@ namespace IOHelpers
 		double pmx;
 		double pmy;
 		double lod;
+
+		// General filter parameters, added 18/11/2016
+		VectorXd noiseAcceleration;
+
+		// Birth (New) 21/11/2016
+		double lowerBirthBoundRange;
+		double upperBirthBoundRange;
+		double birthSigmaRange;
+
+		// SMC
+		size_t partcileSwarmSize;
 	};
 
 	/*

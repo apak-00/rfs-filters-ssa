@@ -13,6 +13,7 @@
 #include "GMPHDFilter.h"
 #include "GMJoTTFilter.hpp"
 #include "BGMJoTTFilter.hpp"
+//#include "SMCJoTTFilter.hpp"
 
 #include "ExtendedKalmanFilter.h"
 #include "UnscentedKalmanFilter.h"
@@ -27,8 +28,15 @@ const double DEG2RAD = M_PI / 180.0;
 
 // JoTT testing
 void testFilter(parameters& _p);
+
+// GM JoTT Filter
 template <typename MultiTargetFilter, typename Mixture>
 void runFilter(MultiTargetFilter& _filter, Sensor& _sensor, Mixture& _mixture, parameters& _p);
+
+// SMC JoTT Filter
+template <typename MultiTargetFilter, typename Swarm>
+void runSMCJoTTFilter(MultiTargetFilter& _filter, Sensor& _sensor, Swarm& _mixture, parameters& _p);
+
 // PHD testing
 template <typename MultiTargetFilter, typename Mixture>
 void runPHDFilter(MultiTargetFilter& _filter, Sensor& _sensor, Mixture& _mixture, parameters& _p);
@@ -37,14 +45,22 @@ void runPHDFilter(MultiTargetFilter& _filter, Sensor& _sensor, Mixture& _mixture
 void testTransformations();
 void testSingleTargetFilter(parameters & _p);
 
+// Temporary observation function
+VectorXd observeTEMEToRAZEL(const VectorXd& _teme, const Sensor& _sensor)
+{
+	return Astro::temeToRAZEL(_teme, _sensor.getPosition(), _sensor.getDateJD(),
+		_sensor.getLOD(), _sensor.getXp(), _sensor.getYp());
+}
+
+
 // Main
 int main(int arcg, char** argv) 
 {	
-	string filename_params = "config-ukf-sim.yaml";
+	string filename_params = "config/config-smcjott.yaml";
 	parameters p = readParametersYAML(filename_params);
 	testFilter(p);
 	//testSingleTargetFilter(p);
-	return 0; 
+ 	return 0; 
 }
 
 /*
@@ -224,6 +240,23 @@ void testFilter(parameters & _p)
 		beta_gaussian_mixture bgm(_p.stateDim, _p.gaussianMixtureMaxSize);
 		runFilter(bgmjott, sensor, bgm, _p);
 	} 
+	else if (!strcmp(_p.multipleTargetFilterType.c_str(), "smcjott"))
+	{
+		// Propagation function
+		std::function<VectorXd(const VectorXd&, const double&, const VectorXd&)> propagate = Astro::integrationPrediction;
+		std::function<VectorXd(const VectorXd&, const Sensor&)> observe = observeTEMEToRAZEL;
+
+		//SMCJoTTFilter smcjott(propagate, observe, _p.birthSize, _p.birthIntensity, _p.pS, _p.pB, _p.qInit, _p.noiseAcceleration);
+		//particle_mixture ps(_p.partcileSwarmSize, _p.stateDim);
+
+		// New: 22/11/2016 Added temporary parameters for birth testing
+		//smcjott.setLowerBirthBoundRange(_p.lowerBirthBoundRange);
+		//smcjott.setUpperBirthBoundRange(_p.upperBirthBoundRange);
+		//smcjott.setBirthSigmaRange(_p.birthSigmaRange);
+
+		//runSMCJoTTFilter(smcjott, sensor, ps, _p);
+
+	}
 	else if (!strcmp(_p.multipleTargetFilterType.c_str(), "gmphd")) 
 	{
 		GMPHDFilter gmphd(kf, _p.birthSize, _p.birthIntensity, _p.pS, _p.birthCovariance,
@@ -736,4 +769,157 @@ void runPHDFilter(MultiTargetFilter& _filter, Sensor& _sensor, Mixture& _mixture
 
 	outputCSV.close();
 	//outputYAML.close();
+}
+
+/**
+ * SMC JoTT Testing
+ */
+template<typename MultiTargetFilter, typename Swarm>
+void runSMCJoTTFilter(MultiTargetFilter & _filter, Sensor & _sensor, Swarm & _mixture, parameters & _p)
+{
+	VectorXd info(11), infoTemp, bearing(2), temp(3);
+	auto measurements = _sensor.getZ();
+	bool dtCalculated = false;
+	Astro::date datePrev, dateCurr;
+
+	double deg2rad = M_PI / 180.0;
+
+	// IO
+	TDMReader tdmReader;
+	bool tdm = false, sim = false;
+	YAML::Emitter result, resultSmoothing;
+	result << YAML::BeginSeq;
+	resultSmoothing << YAML::BeginSeq;
+	ofstream outputCSV("Results/result_gmjott.csv");
+		//outputYAML("Results/result_gmjott.yaml"),
+		//outputYAMLSmoothing("Results/result_gmjott_smoothing.yaml");		// Output file 
+	ifstream input;
+
+#ifdef MY_DEBUG
+	// Debug
+	vector<double> elapsed(6);
+	//clock_t start, end;
+	//double elapsedTotal;
+#endif
+
+	if (!strcmp(_p.inputType.c_str(), "tdm")) {
+		tdmReader.open(_p.filename);
+		if (!tdmReader.isOpen())
+		{
+			cout << ".tdm file is not open." << endl;
+			return;
+		}
+
+		tdm = true;
+	}
+	else if (!strcmp(_p.inputType.c_str(), "csv_netcdf_cfar"))
+	{
+		input.open(_p.filename);
+		if (!input.is_open())
+		{
+			cout << ".netcdf processed file is not open." << endl;
+			return;
+		}
+	}
+	else if (!strcmp(_p.inputType.c_str(), "sim"))
+	{
+		input.open(_p.filename);
+		if (!input.is_open())
+		{
+			cout << ".csv simulation data file is not open." << endl;
+			return;
+		}
+		sim = true;
+	}
+
+	for (size_t i = 0; i < 2e5; i++)
+	{
+		// Read input
+		if (tdm) {
+			info = tdmReader.readEntryEigen();
+			if (!info.size())
+				break;
+		}
+		// This option also reads simulated files, 
+		else
+		{
+			infoTemp = readNetCDFProcessedEntry(input);
+			if (!infoTemp.size())
+				break;
+
+			// Y, M, D, H, M, S, R(gt/0), Az, Ele, n, z1 , .. zN
+			info << infoTemp(6), infoTemp(7), infoTemp(8), 0, 0, infoTemp.segment(0, 6);
+		}
+		
+		if (!info.size())
+			break;
+
+		if (info(1) > 360.0)
+			info(1) -= 360.0;
+		info(1) = 180.0 - info(1);		// Azimuth correction (?)
+
+		info(1) *= deg2rad;
+		info(2) *= deg2rad;
+
+		dateCurr = Astro::date((int)info(5), (int)info(6), (int)info(7),
+			(int)info(8), (int)info(9), info(10));
+
+		if (!dtCalculated)
+		{
+			datePrev = dateCurr;
+			dtCalculated = true;
+			continue;
+		}
+
+		_filter.setT(dateCurr - datePrev);
+		datePrev = dateCurr;
+
+		measurements.clear();
+
+		// Check input type
+		if (tdm)
+			measurements.push_back(info.segment(0, _p.observationDim));
+		else
+			for (size_t j = 0; j < infoTemp(9); j++)
+			{
+				temp << infoTemp(10 + j), info(1), info(2);
+				measurements.push_back(temp);
+			}
+
+		bearing << info(1), info(2);
+
+		_sensor.setDate(dateCurr);
+		_sensor.setZPrev(_sensor.getZ());
+		_sensor.setZ(measurements);
+		_sensor.setBearing(bearing);
+
+		// TEMPORARY
+		if (i == 0)
+		{
+			VectorXd lBound(3), uBound(3);
+			double t = 0.1;
+			lBound << 500, info(1) - t, info(2) - t;
+			uBound << 1500, info(1) + t, info(2) + t;
+
+			_mixture.populateRandomRAZEL(_sensor, lBound, uBound);
+		}
+
+		_filter.predict(_mixture, _sensor);
+		_filter.update(_mixture, _sensor);
+
+		//printEstimatesToCSVFull(_filter, outputCSV, estimates, _sensor, i, 0);
+
+		// Console output
+		double z;
+		if (!_sensor.getZ().size())
+			z = 0;
+		else
+			z = _sensor.getZ(0)(0);
+
+		cout << i << " " << z << " [" << "/" << _mixture.size() << "][" << _filter.getQ() << "]";
+		cout << endl;
+	}
+
+	// Close the output files
+	outputCSV.close();
 }

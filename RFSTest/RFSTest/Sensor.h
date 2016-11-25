@@ -30,7 +30,8 @@ protected:
 	double V;           // ???
 	double kappa;       // Lambda * clutter distribution, Poisson
 
-	std::vector<VectorXd> z;	// Measurements' vector
+	std::vector<VectorXd> z;		// Measurements' vector
+	std::vector<VectorXd> zPrev;	// Previous measurements
 	MatrixXd R;         // Observation noise
 	MatrixXd H;         // Observation matrix (state space -> observation space)
 	MatrixXd S;
@@ -70,6 +71,7 @@ public:
 	const auto getZDim() const { return zDim; }
 	const auto getSDim() const { return sDim; }
 	const auto getZ() const { return z; }
+	const auto getZPrev() const { return zPrev; }
 	const auto getZ(const size_t& _id) { return z[_id]; }
 	const auto getR() const { return R; }
 	const auto getH() const { return H; }
@@ -93,6 +95,7 @@ public:
 	void setZDim(const decltype(zDim) & _zDim) { zDim = _zDim; }
 	void setSDim(const decltype(sDim) & _sDim) { sDim = _sDim; }
 	void setZ(const decltype(z) & _z) { z = _z; }
+	void setZPrev(const decltype(zPrev) _zPrev) { zPrev = _zPrev; };
 	void setR(const decltype(R) & _R) { R = _R; }
 	void setH(const decltype(H) & _H) { H = _H; }
 	void setS(const decltype(S) & _S) { S = _S; }

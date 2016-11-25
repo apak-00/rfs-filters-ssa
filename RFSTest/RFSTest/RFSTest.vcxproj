@@ -35,7 +35,6 @@
     <ClInclude Include="MathHelpers.h" />
     <ClInclude Include="Sensor.h" />
     <ClInclude Include="SingleTargetFilter.h" />
-    <ClInclude Include="SMCJoTTFilter.hpp" />
     <ClInclude Include="UnscentedKalmanFilter.h" />
     <ClInclude Include="unscented_sampler.hpp" />
   </ItemGroup>
@@ -55,12 +54,13 @@
     <ClCompile Include="UnscentedKalmanFilter.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="config-bgmjott-ukf-tdm.yaml" />
-    <None Include="config-gmphd-tdm.yaml" />
-    <None Include="config-ukf-netcdf.yaml" />
-    <None Include="config-ukf-sim.yaml" />
-    <None Include="config-ukf-tdm.yaml" />
-    <None Include="config.yaml" />
+    <None Include="config\config-bgmjott-ukf-tdm.yaml" />
+    <None Include="config\config-gmphd-tdm.yaml" />
+    <None Include="config\config-smcjott.yaml" />
+    <None Include="config\config-ukf-netcdf.yaml" />
+    <None Include="config\config-ukf-sim.yaml" />
+    <None Include="config\config-ukf-tdm.yaml" />
+    <None Include="config\config.yaml" />
     <None Include="packages.config" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

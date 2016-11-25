@@ -5,6 +5,7 @@
 #include <random>
 #include <Eigen\Core>
 #include <Eigen/LU>
+#include "Sensor.h"
 
 using namespace Eigen;
 
@@ -14,15 +15,14 @@ using namespace Eigen;
 template <typename T>
 struct mixture {
 
-	size_t nMax;
-	size_t dimension;
-	unsigned int idCounter;							// Id Counter
+	size_t nMax;					// Max. number of components (?)
+	size_t dimension;				// Dimensionality of the components
+	unsigned int idCounter;			// Id Counter
 	unsigned int trackCounter;
-	std::vector<T> components;		// Vector with components
+	std::vector<T> components;		// Vector with mixture components
 
 	mixture();
 	mixture(const size_t& _dim, const size_t& _nMax);
-	mixture(const size_t& _dim, const size_t& _n, const size_t& _nMax);
 	mixture(const mixture& _gm);
 
 	/* Operator overloading */
@@ -38,11 +38,30 @@ struct mixture {
 	auto size() const { return components.size(); };
 	auto dim() const { return dimension; };
 	double weightSum() const;
+	void normalizeWeights();
 
 	/* Static functions (temporary?) */
 	static double hellinger(const T& _c1, const T & _c2);
 	static VectorXd randVec(const VectorXd & _lowerBound, const VectorXd & upperBound);
 };
+
+/**
+* <summary> [Old, Temporary] Returns a VectorXd containing random values within the specified range. </summary>
+* <param name = "_lowerBound"> </param>
+* <param name = "_lowerBound"> </param>
+* <returns> A VectorXd with random values. </returns>
+*/
+template<typename T>
+inline VectorXd mixture<T>::randVec(const VectorXd & _lowerBound, const VectorXd & upperBound)
+{
+	size_t l = _lowerBound.size();
+	VectorXd result = VectorXd::Zero(l);
+
+	for (size_t i = 0; i < l; i++)
+		result(i) = (double)(upperBound(i) - _lowerBound(i)) * (double)rand() / (double)RAND_MAX - (upperBound(i) - _lowerBound(i)) / 2;
+
+	return result;
+}
 
 template <typename T>
 std::ostream& operator << (std::ostream& _os, const mixture<T>& _gm);
@@ -91,8 +110,6 @@ struct gaussian_mixture : mixture<gaussian_component> {
 	/* Constructors */
 	gaussian_mixture();
 	gaussian_mixture(const size_t& _dim, const size_t& _nMax);
-	gaussian_mixture(const size_t& _dim, const size_t& _n, const size_t& _nMax, 
-		const VectorXd& _lBound, const VectorXd& _uBound, const MatrixXd& _iCov, const double& _iWeight);
 	gaussian_mixture(const gaussian_mixture& _gm);
 
 	/* GMM-related functions */
@@ -131,8 +148,6 @@ struct beta_gaussian_mixture : mixture<beta_gaussian_component> {
 
 	beta_gaussian_mixture();
 	beta_gaussian_mixture(const size_t& _dim, const size_t& _nMax);
-	beta_gaussian_mixture(const size_t& _dim, const size_t& _n, const size_t& _nMax,
-		const VectorXd& _lBound, const VectorXd& _uBound, const MatrixXd& _iCov, const double& _iWeight);
 	beta_gaussian_mixture(const beta_gaussian_mixture& _gm);
 
 	/* GMM-related functions */
@@ -155,19 +170,6 @@ inline mixture<T>::mixture() : nMax(0), dimension(0), idCounter(0), trackCounter
 template<typename T>
 inline mixture<T>::mixture(const size_t & _dim, const size_t & _nMax) 
 	: dimension(_dim), nMax(_nMax), idCounter(1), trackCounter(1) {}
-
-/**
-* <summary> A constructor that initializes an empty beta-Gaussian Mixture of the specified size. </summary>
-* <param name = "_dim"> Dimensinality of the stored components. </param>
-* <param name = "_n"> Initial number of components. </param>
-* <param name = "_nMax"> Maximum number of components. </param>
-*/
-template<typename T>
-inline mixture<T>::mixture(const size_t & _dim, const size_t & _n, const size_t & _nMax) 
-	: dimension(_dim), nMax(_nMax), idCounter(1), trackCounter(1)
-{
-	components.resize(_n);
-}
 
 /**
  * <summary> A copy constructor of the Mixture interface. </summary>
@@ -248,8 +250,20 @@ inline double mixture<T>::weightSum() const
 	for (auto &c : components)
 		sum += c.w;
 
+	//double sum = std::accumulate(components.begin(), components.end(), 0.0, [](double _sum, const T& _p) { return _sum + _p.w; });
+
 	return sum;
 }
+
+template<typename T>
+inline void mixture<T>::normalizeWeights()
+{
+	double wSum = weightSum();
+	if (wSum != 1)
+		for (auto &c : components)
+			c.w /= wSum;
+}
+
 /**
 * <summary> Hellinger distance. </summary>
 * <param name = "_v1"> First mean. </param>
@@ -267,23 +281,7 @@ inline double mixture<T>::hellinger(const T& _c1, const T & _c2)
 	return 1 - sqrt(sqrt((_c1.P * _c2.P).determinant()) / (0.5 * pSum).determinant()) * exp(epsilon);
 }
 
-/**
- * <summary> [Old, Temporary] Returns a VectorXd containing random values within the specified range. </summary>
- * <param name = "_lowerBound"> </param>
- * <param name = "_lowerBound"> </param>
- * <returns> A VectorXd with random values. </returns>
- */
-template<typename T>
-inline VectorXd mixture<T>::randVec(const VectorXd & _lowerBound, const VectorXd & upperBound)
-{
-	size_t l = _lowerBound.size();
-	VectorXd result = VectorXd::Zero(l);
 
-	for (size_t i = 0; i < l; i++)
-		result(i) = (double)(upperBound(i) - _lowerBound(i)) * (double)rand() / (double)RAND_MAX - (upperBound(i) - _lowerBound(i)) / 2;
-
-	return result;
-}
 
 /**
 * <summary> Stream operator overloading for Gaussian Component. </summary>
@@ -327,25 +325,3 @@ struct particle
 	particle(const VectorXd& _m, const double& _w = 0);
 };
 
-/*
- * <summary> Particle swarm for SMC </summary>
- */
-template<typename T>
-struct particle_swarm
-{
-	std::vector<T> particles;
-
-	particle_swarm();
-	particle_swarm(const size_t& _n, const size_t& _dim, const double& _w = 0);
-	particle_swarm(const particle_swarm<T>& _pc);
-
-	particle_swarm<T> operator+ (const particle_swarm<T>& _gc) const;
-
-	size_t size();
-
-	double weightSum();
-	
-	void normalize();
-	void resampleITS(const size_t& _size);
-
-};

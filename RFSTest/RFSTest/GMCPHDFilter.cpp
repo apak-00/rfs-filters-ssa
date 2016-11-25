@@ -65,7 +65,7 @@ void GMCPHDFilter::predict(gaussian_mixture & _gmm, Sensor & _sensor)
 		
 		// Log sums ----------
 		// TODO: Optimize 
-		VectorXd tempLogSum = VectorXd::LinSpaced(NMax, 1, NMax);		// 1, 2, ... NMax		
+		VectorXd tempLogSum = VectorXd::LinSpaced(NMax, 1.0, (double) NMax);		// 1, 2, ... NMax		
 		for (size_t t = 0; t < NMax; t++)
 			tempLogSum(t) = log(tempLogSum(t));
 
@@ -73,7 +73,6 @@ void GMCPHDFilter::predict(gaussian_mixture & _gmm, Sensor & _sensor)
 		// ln(1) = 0
 		for (size_t t = 1; t < NMax; t++)
 			tempLogSum(t) = tempLogSum(t) + tempLogSum(t - 1);
-
 		// Log sum end ----------
 
 		for (size_t j = 0; j < NMax; j++)
