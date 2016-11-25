@@ -29,12 +29,29 @@ double MathHelpers::gaussianLikelihood(const VectorXd _z, const VectorXd _zPred,
 	return (1.0 / sqrt(pow(2.0 * M_PI, _z.size()) * _S.determinant())) * exp(-0.5 * mahalanobis(_z, _zPred, _S));
 }
 
-/*
+ /**
+ * <summary> [Old, Temporary] Returns a VectorXd containing random values within the specified range. </summary>
+ * <param name = "_lowerBound"> </param>
+ * <param name = "_lowerBound"> </param>
+ * <returns> A VectorXd with random values. </returns>
+ */
+ VectorXd MathHelpers::randVec(const VectorXd & _lowerBound, const VectorXd & upperBound)
+ {
+	 size_t l = _lowerBound.size();
+	 VectorXd result = VectorXd::Zero(l);
+
+	 for (size_t i = 0; i < l; i++)
+		 result(i) = (double)(upperBound(i) - _lowerBound(i)) * (double)rand() / (double)RAND_MAX - (upperBound(i) - _lowerBound(i)) / 2;
+
+	 return result;
+ }
+
+ /*
  * <summary> Computes elementary symmetric functions. </summary>
  * <par> For CPHD filter. </par>
  * TODO: Complete
  */
-VectorXd MathHelpers::esf(const VectorXd & _Z)
+ VectorXd MathHelpers::esf(const VectorXd & _Z)
 {
 	if (!_Z.size())
 		return VectorXd::Ones(1);

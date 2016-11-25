@@ -1,11 +1,11 @@
 #pragma once
 #include <Eigen/Dense>
-#include "RFSFilter.h"
+#include "GMRFSFilter.h"
 #include "Sensor.h"
-#include "gmm.h"
+#include "MixtureModels.h"
 
 class GMCPHDFilter :
-	public RFSFilter <gaussian_mixture>
+	public GMRFSFilter <gaussian_mixture>
 {
 private:
 	unsigned int nBirthComponents;	// Number of birth components

@@ -27,9 +27,9 @@
     <ClInclude Include="CFARProcessor.h" />
     <ClInclude Include="GMCPHDFilter.h" />
     <ClInclude Include="GMJoTTFilter.hpp" />
-    <ClInclude Include="gmm.h" />
+    <ClInclude Include="MixtureModels.h" />
     <ClInclude Include="GMPHDFilter.h" />
-    <ClInclude Include="RFSFilter.h" />
+    <ClInclude Include="GMRFSFilter.h" />
     <ClInclude Include="IOHelpers.h" />
     <ClInclude Include="KalmanFilter.h" />
     <ClInclude Include="MathHelpers.h" />
@@ -44,7 +44,7 @@
     <ClCompile Include="ExtendedKalmanFilter.cpp" />
     <ClCompile Include="CFARProcessor.cpp" />
     <ClCompile Include="GMCPHDFilter.cpp" />
-    <ClCompile Include="gmm.cpp" />
+    <ClCompile Include="MixtureModels.cpp" />
     <ClCompile Include="GMPHDFilter.cpp" />
     <ClCompile Include="IOHelpers.cpp" />
     <ClCompile Include="KalmanFilter.cpp" />

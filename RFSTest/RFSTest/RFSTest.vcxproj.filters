@@ -15,9 +15,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="gmm.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="KalmanFilter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -66,14 +63,14 @@
     <ClInclude Include="BernoulliSmoother.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="RFSFilter.h">
+    <ClInclude Include="GMRFSFilter.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="MixtureModels.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="gmm.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Source.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -108,6 +105,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="BernoulliSmoother.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="MixtureModels.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

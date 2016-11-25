@@ -1,14 +1,14 @@
 #pragma once
 #include <Eigen/Dense>
-#include "RFSFilter.h"
+#include "GMRFSFilter.h"
 #include "Sensor.h"
-#include "gmm.h"
+#include "MixtureModels.h"
 #include "MathHelpers.h"
 
 /*
 * <summary> Gaussian Mixture Joint Target Detection and Tracking Filter class. </summary>
 */
-class GMJoTTFilter : public RFSFilter<gaussian_mixture>
+class GMJoTTFilter : public GMRFSFilter<gaussian_mixture>
 {
 protected:
 	double q, qPred;				// Probability of target existence
@@ -100,7 +100,6 @@ public:
 				_gmm.addComponent(gaussian_component(birth, initialCovariance, initialWeight, _gmm.idCounter++));
 			}
 		}
-
 	}
 
 	/**

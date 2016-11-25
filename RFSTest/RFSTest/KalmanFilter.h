@@ -1,7 +1,7 @@
 #pragma once
 #include <Eigen/Dense>
 #include "Sensor.h"
-#include "gmm.h"
+#include "MixtureModels.h"
 #include "SingleTargetFilter.h"
 
 using namespace Eigen;

@@ -52,11 +52,10 @@ VectorXd observeTEMEToRAZEL(const VectorXd& _teme, const Sensor& _sensor)
 		_sensor.getLOD(), _sensor.getXp(), _sensor.getYp());
 }
 
-
 // Main
 int main(int arcg, char** argv) 
 {	
-	string filename_params = "config/config-smcjott.yaml";
+	string filename_params = "config/config-ukf-tdm.yaml";
 	parameters p = readParametersYAML(filename_params);
 	testFilter(p);
 	//testSingleTargetFilter(p);

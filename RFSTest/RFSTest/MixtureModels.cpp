@@ -1,5 +1,6 @@
 #include <algorithm>
-#include "gmm.h"
+#include "MixtureModels.h"
+#include "MathHelpers.h"
 
 // Temp
 #include <iostream>
@@ -16,8 +17,6 @@ gaussian_mixture::gaussian_mixture() : mixture() {}
  */
 gaussian_mixture::gaussian_mixture(const size_t & _dim, const size_t & _nMax)
 	: mixture(_dim, _nMax) {}
-
-
 
 /**
  * <summary> Copy constructor of the Gaussian Mixture. </summary>
@@ -45,7 +44,7 @@ void gaussian_mixture::merge(const double & _mergeThreshold)
 
 		for (auto i = components.begin(); i != components.end();) {
 
-			double distance = hellinger(temp.back(), *i);
+			double distance = MathHelpers::hellinger(temp.back(), *i);
 
 			if (distance < _mergeThreshold) {
 				temp.back() = temp.back() + *i;
@@ -347,7 +346,7 @@ void beta_gaussian_mixture::merge(const double & _mergeThreshold)
 
 		for (auto i = components.begin(); i != components.end();) {
 
-			double distance = hellinger(temp.back(), *i);
+			double distance = MathHelpers::hellinger(temp.back(), *i);
 
 			if (distance < _mergeThreshold) {
 				temp.back() = temp.back() + *i;

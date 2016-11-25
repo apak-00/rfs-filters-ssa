@@ -7,6 +7,8 @@
 #include <Eigen/LU>
 #include "Sensor.h"
 
+#include <iostream>
+
 using namespace Eigen;
 
 /*
@@ -30,7 +32,7 @@ struct mixture {
 	T& operator[] (size_t i) { return components[i]; }
 
 	virtual void addComponent(const T& _c);
-	virtual void merge(const double& _mergeThreshold) = 0;
+	virtual void merge(const double& _mergeThreshold) {};
 	virtual void prune(const double& _pruneThreshold);
 	virtual auto getEstimates(const double& _estimateThreshold) -> decltype(components);
 
@@ -39,29 +41,7 @@ struct mixture {
 	auto dim() const { return dimension; };
 	double weightSum() const;
 	void normalizeWeights();
-
-	/* Static functions (temporary?) */
-	static double hellinger(const T& _c1, const T & _c2);
-	static VectorXd randVec(const VectorXd & _lowerBound, const VectorXd & upperBound);
 };
-
-/**
-* <summary> [Old, Temporary] Returns a VectorXd containing random values within the specified range. </summary>
-* <param name = "_lowerBound"> </param>
-* <param name = "_lowerBound"> </param>
-* <returns> A VectorXd with random values. </returns>
-*/
-template<typename T>
-inline VectorXd mixture<T>::randVec(const VectorXd & _lowerBound, const VectorXd & upperBound)
-{
-	size_t l = _lowerBound.size();
-	VectorXd result = VectorXd::Zero(l);
-
-	for (size_t i = 0; i < l; i++)
-		result(i) = (double)(upperBound(i) - _lowerBound(i)) * (double)rand() / (double)RAND_MAX - (upperBound(i) - _lowerBound(i)) / 2;
-
-	return result;
-}
 
 template <typename T>
 std::ostream& operator << (std::ostream& _os, const mixture<T>& _gm);
@@ -169,7 +149,7 @@ inline mixture<T>::mixture() : nMax(0), dimension(0), idCounter(0), trackCounter
  */
 template<typename T>
 inline mixture<T>::mixture(const size_t & _dim, const size_t & _nMax) 
-	: dimension(_dim), nMax(_nMax), idCounter(1), trackCounter(1) {}
+	: dimension(_dim), nMax(_nMax), idCounter(0), trackCounter(0) {}
 
 /**
  * <summary> A copy constructor of the Mixture interface. </summary>
@@ -246,12 +226,9 @@ template<typename T>
 inline double mixture<T>::weightSum() const
 {
 	double sum = 0;
-
 	for (auto &c : components)
 		sum += c.w;
-
 	//double sum = std::accumulate(components.begin(), components.end(), 0.0, [](double _sum, const T& _p) { return _sum + _p.w; });
-
 	return sum;
 }
 
@@ -263,25 +240,6 @@ inline void mixture<T>::normalizeWeights()
 		for (auto &c : components)
 			c.w /= wSum;
 }
-
-/**
-* <summary> Hellinger distance. </summary>
-* <param name = "_v1"> First mean. </param>
-* <param name = "_v1"> First mean's covariance. </param>
-* <param name = "_v1"> Second mean. </param>
-* <param name = "_v1"> Second mean's covariance. </param>
-* <returns> Hellinger distance. </returns>
-*/
-template<typename T>
-inline double mixture<T>::hellinger(const T& _c1, const T & _c2)
-{
-	VectorXd vDiff = _c1.m - _c2.m;
-	MatrixXd pSum = _c1.P + _c2.P;
-	double epsilon = (-0.25 * vDiff.transpose() * pSum.inverse() * vDiff)(0, 0);
-	return 1 - sqrt(sqrt((_c1.P * _c2.P).determinant()) / (0.5 * pSum).determinant()) * exp(epsilon);
-}
-
-
 
 /**
 * <summary> Stream operator overloading for Gaussian Component. </summary>
@@ -313,9 +271,9 @@ struct gaussian_bernoulli_model
 };
 
 /*
- * <summary> Particle for SMC. </summary>
- */
-struct particle 
+* <summary> Particle for SMC. </summary>
+*/
+struct particle
 {
 	VectorXd m;			// Mean
 	double w;			// Weight
@@ -324,4 +282,3 @@ struct particle
 	particle(const size_t& dim, const double& _w = 0);
 	particle(const VectorXd& _m, const double& _w = 0);
 };
-
