@@ -12,29 +12,26 @@
 using namespace Eigen;
 
 /*
- * <summary> Mixture interface. </summary>
- */
+* <summary> Mixture interface. </summary>
+* <par> General interface for different mixtures (particle, Gaussian, etc.). </par>
+*/
 template <typename T>
 struct mixture {
 
-	size_t nMax;					// Max. number of components (?)
-	size_t dimension;				// Dimensionality of the components
-	unsigned int idCounter;			// Id Counter
-	unsigned int trackCounter;
+	mixture() : nMax(0), dimension(0) {};		// Empty constructor
+	mixture(const size_t& _dim, const size_t& _nMax) : nMax(_nMax), dimension(_dim) {};
+	mixture(const mixture& _m) : components(_m.components), nMax(_m.nMax), dimension(_m.dimension) {};		// Copy constructor
+
 	std::vector<T> components;		// Vector with mixture components
 
-	mixture();
-	mixture(const size_t& _dim, const size_t& _nMax);
-	mixture(const mixture& _gm);
+	size_t nMax;					// Max. number of components, non-strict (?)
+	size_t dimension;				// Dimensionality of the components
 
 	/* Operator overloading */
 	T operator [] (size_t i) const { return components[i]; }
 	T& operator[] (size_t i) { return components[i]; }
 
 	virtual void addComponent(const T& _c);
-	virtual void merge(const double& _mergeThreshold) {};
-	virtual void prune(const double& _pruneThreshold);
-	virtual auto getEstimates(const double& _estimateThreshold) -> decltype(components);
 
 	/* Miscellaneous */
 	auto size() const { return components.size(); };
@@ -43,8 +40,27 @@ struct mixture {
 	void normalizeWeights();
 };
 
+/*
+ * <summary> An interface for Gaussian Mixtures. </summary>
+ */
 template <typename T>
-std::ostream& operator << (std::ostream& _os, const mixture<T>& _gm);
+struct g_mixture : mixture<T>{
+
+	unsigned int idCounter;			// A counter to track Gaussian components
+	unsigned int trackCounter;		// A counter to track the tracks of the Gaussian components
+	
+	g_mixture();					// Empty constructor
+	g_mixture(const size_t& _dim, const size_t& _nMax);
+	g_mixture(const g_mixture& _gm);		// Copy constructor
+
+	virtual void addComponent(const T& _c) override;
+	virtual void merge(const double& _mergeThreshold) = 0;
+	virtual void prune(const double& _pruneThreshold);
+	virtual auto getEstimates(const double& _estimateThreshold) -> decltype(components);
+};
+
+template <typename T>
+std::ostream& operator << (std::ostream& _os, const g_mixture<T>& _gm);
 
 /**
  *	<summary> Gaussian component. </summary>
@@ -85,7 +101,7 @@ std::ostream& operator << (std::ostream& _os, const gaussian_component& _gc);
 /**
  * <summary> Gaussian Mixture </summary>
  */
-struct gaussian_mixture : mixture<gaussian_component> {
+struct gaussian_mixture : g_mixture<gaussian_component> {
 	 
 	/* Constructors */
 	gaussian_mixture();
@@ -124,7 +140,7 @@ std::ostream& operator << (std::ostream& _os, const beta_gaussian_component& _gc
 /**
  * <summary> Beta-Gaussian Mixture. </summary>
  */
-struct beta_gaussian_mixture : mixture<beta_gaussian_component> {
+struct beta_gaussian_mixture : g_mixture<beta_gaussian_component> {
 
 	beta_gaussian_mixture();
 	beta_gaussian_mixture(const size_t& _dim, const size_t& _nMax);
@@ -140,7 +156,7 @@ struct beta_gaussian_mixture : mixture<beta_gaussian_component> {
  * <summary> An empty constructor for the mixture interface. </summary>
  */
 template<typename T>
-inline mixture<T>::mixture() : nMax(0), dimension(0), idCounter(0), trackCounter(0) {}
+inline g_mixture<T>::g_mixture() : mixture(), idCounter(0), trackCounter(0) {}
 
 /**
  * <summary> A constructor that initializes an empty beta-Gaussian Mixture. </summary>
@@ -148,24 +164,34 @@ inline mixture<T>::mixture() : nMax(0), dimension(0), idCounter(0), trackCounter
  * <param name = "_nMax"> Maximum number of components. </param>
  */
 template<typename T>
-inline mixture<T>::mixture(const size_t & _dim, const size_t & _nMax) 
-	: dimension(_dim), nMax(_nMax), idCounter(0), trackCounter(0) {}
+inline g_mixture<T>::g_mixture(const size_t & _dim, const size_t & _nMax)
+	: mixture(_dim, _nMax), idCounter(0), trackCounter(0) {}
 
 /**
  * <summary> A copy constructor of the Mixture interface. </summary>
  * <param name = "_m"> A mixture to copy from. </param>
  */
 template<typename T>
-inline mixture<T>::mixture(const mixture & _mixture) 
-	: dimension(_mixture.dimension), nMax(_mixture.nMax), idCounter(_mixture.idCounter), 
-	components(_mixture.components), trackCounter(_mixture.trackCounter) {}
+inline g_mixture<T>::g_mixture(const g_mixture & _mixture) : mixture(_mixture),
+	idCounter(_mixture.idCounter), trackCounter(_mixture.trackCounter) {}
+
+/**
+* <summary> Adds a component to the mixture. </summary>
+* <param name = "_c"> A component to be added. </param>
+*/
+template<typename T>
+inline void mixture<T>::addComponent(const T & _component)
+{
+	assert(_component.m.size() == dimension && "Attempt to add a mixture component of different dimension ");
+	components.push_back(_component);
+}
 
 /**
  * <summary> Adds a component to the mixture. </summary>
  * <param name = "_c"> A component to be added. </param>
  */
 template<typename T>
-inline void mixture<T>::addComponent(const T & _component)
+inline void g_mixture<T>::addComponent(const T & _component)
 {
 	assert(_component.m.size() == dimension && "Attempt to add a mixture component of different dimension ");
 
@@ -174,12 +200,13 @@ inline void mixture<T>::addComponent(const T & _component)
 	if (!_component.tag[0])
 		components.back().tag[0] = idCounter++;
 }
+
 /**
 * <summary> Pruning of the Gaussian Components with weights under the threshold. </summary>
 * <param name = _weightThreshold> Pruning weight threshold. </param>
 */
 template<typename T>
-inline void mixture<T>::prune(const double & _pruneThreshold)
+inline void g_mixture<T>::prune(const double & _pruneThreshold)
 {
 	auto pruned = std::remove_if(components.begin(), components.end(),
 		[&_pruneThreshold](const T& c) { return c.w < _pruneThreshold; });
@@ -195,7 +222,6 @@ inline void mixture<T>::prune(const double & _pruneThreshold)
 
 	for (auto &c : components)
 		c.w /= wSum;
-	
 }
 
 /**
@@ -204,7 +230,7 @@ inline void mixture<T>::prune(const double & _pruneThreshold)
  * <returns> A vector of components with the weight above threshold. </returns>
  */
 template<typename T>
-inline auto mixture<T>::getEstimates(const double & _estimateThreshold) -> decltype(components)
+inline auto g_mixture<T>::getEstimates(const double & _estimateThreshold) -> decltype(components)
 {
 	auto below = std::remove_if(components.begin(), components.end(),
 		[&_estimateThreshold](const T& gc) { return gc.w < _estimateThreshold; });
@@ -247,7 +273,7 @@ inline void mixture<T>::normalizeWeights()
 * <param name = "_gm"> Gaussian Mixture for the output. </param>
 */
 template<typename T>
-inline std::ostream & operator<<(std::ostream & _os, const mixture<T> & _m)
+inline std::ostream & operator<<(std::ostream & _os, const g_mixture<T> & _m)
 {
 	// TODO: insert return statement here
 	_os << _m.size() << "/" << _m.nMax << std::endl;
@@ -281,4 +307,24 @@ struct particle
 	particle();
 	particle(const size_t& dim, const double& _w = 0);
 	particle(const VectorXd& _m, const double& _w = 0);
+};
+
+/*
+* <summary> Particle swarm for SMC. </summary>
+*/
+struct particle_mixture : mixture <particle>
+{
+	static std::random_device rDev;
+	static std::mt19937 generator;
+	static std::uniform_real_distribution<double> itsd;
+
+	particle_mixture();
+	particle_mixture(const particle_mixture& _pm);
+	particle_mixture(const size_t& _n, const size_t& _dim, const double& _w = 0);
+
+	particle_mixture operator+ (const particle_mixture& _gc) const;
+
+	double getEffectiveN();
+	void resampleITS(const size_t& _size);
+	void populateRandomRAZEL(const Sensor& _sensor, const VectorXd& _lBound, const VectorXd& _uBound);
 };

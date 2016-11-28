@@ -54,6 +54,7 @@
     <ClCompile Include="UnscentedKalmanFilter.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="MixturesClassDiagram.cd" />
     <None Include="config\config-bgmjott-ukf-tdm.yaml" />
     <None Include="config\config-gmphd-tdm.yaml" />
     <None Include="config\config-smcjott.yaml" />

@@ -134,5 +134,6 @@
     <None Include="config\config-smcjott.yaml">
       <Filter>Resource Files</Filter>
     </None>
+    <None Include="MixturesClassDiagram.cd" />
   </ItemGroup>
 </Project>

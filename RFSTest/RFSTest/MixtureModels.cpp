@@ -8,7 +8,7 @@
 /**
  * <summary> An empty constructor fo the Gaussian Mixture. </summary>
  */
-gaussian_mixture::gaussian_mixture() : mixture() {}
+gaussian_mixture::gaussian_mixture() : g_mixture() {}
 
 /**
  * <summary> Constructor that initializes an empty Gaussian Mixture of speified dimension. </summary>
@@ -16,14 +16,14 @@ gaussian_mixture::gaussian_mixture() : mixture() {}
  * <param name = "_nMax"> Maximum number of the Gaussian componentes. </param>
  */
 gaussian_mixture::gaussian_mixture(const size_t & _dim, const size_t & _nMax)
-	: mixture(_dim, _nMax) {}
+	: g_mixture(_dim, _nMax) {}
 
 /**
  * <summary> Copy constructor of the Gaussian Mixture. </summary>
  * <param name = "_gm"> An instance of Gaussian Mixture to copy from. </param>
  */
 gaussian_mixture::gaussian_mixture(const gaussian_mixture & _gm)
-	: mixture(_gm) {}
+	: g_mixture(_gm) {}
 
 /**
  * <summary> Merge of the Gaussian Components within threshold range. </summary>
@@ -182,8 +182,6 @@ std::ostream & operator<<(std::ostream & _os, const beta_gaussian_component & _g
 	return _os;
 }
 
-
-
 /*
  * <summary> An empty constructor for the beta-Gaussian component structure. </summary>
  * <par> Initializes everything to zero, and u and v parameters of beta distribution to one. </par>
@@ -310,7 +308,7 @@ double beta_gaussian_component::getBetaVariance(const double & _u, const double 
 /**
  * <summary> An empty constructor of the beta-Gaussian Mixture. </summary>
  */
-beta_gaussian_mixture::beta_gaussian_mixture() : mixture() {}
+beta_gaussian_mixture::beta_gaussian_mixture() : g_mixture() {}
 
 /**
  * <summary >A constructor of the Beta Gaussian Mixture that takes the dimensionality of the stored components 
@@ -318,13 +316,13 @@ beta_gaussian_mixture::beta_gaussian_mixture() : mixture() {}
  * <param name = "_dim"> Dimensionality of the stored components. </param>
  * <param name = "_nMax"> Maximum number of components in the mixture. </param>
  */
-beta_gaussian_mixture::beta_gaussian_mixture(const size_t & _dim, const size_t & _nMax) : mixture(_dim, _nMax) {}
+beta_gaussian_mixture::beta_gaussian_mixture(const size_t & _dim, const size_t & _nMax) : g_mixture(_dim, _nMax) {}
 
 /**
 * <summary> Copy constructor of the beta-Gaussian Mixture. </summary>
 * <param name = "_gm"> An instance of beta-Gaussian Mixture to copy from. </param>
 */
-beta_gaussian_mixture::beta_gaussian_mixture(const beta_gaussian_mixture & _bgm) : mixture (_bgm) {}
+beta_gaussian_mixture::beta_gaussian_mixture(const beta_gaussian_mixture & _bgm) : g_mixture(_bgm) {}
 
 /**
  * <summary> Merge procedure of the Beta Gaussian Mixture. </summary>
@@ -383,5 +381,106 @@ particle::particle() : w(0) {}		// Empty constructor
 particle::particle(const size_t& _dim, const double& _w) : m(VectorXd::Zero(_dim)), w(_w) {}	// Zero constructor with dimenstion and weight
 particle::particle(const VectorXd& _m, const double& _w) : m(_m), w(_w) {}						// Constructor with mean and weight
 
+/*
+ * <summary> Empty constructor. </summary>
+ */
+particle_mixture::particle_mixture() : mixture(){}
 
+/*
+ * <summary> Copy constructor. </summary>
+ */
+particle_mixture::particle_mixture(const particle_mixture & _pm) : mixture(_pm) {}
+
+/*
+* <summary> Default constructor. (?) </summary>
+*/
+particle_mixture::particle_mixture(const size_t & _nMax, const size_t & _dim, const double & _w) : mixture(_dim, _nMax)
+{
+	particle p(_dim, _w);
+	components = std::vector<particle>(_nMax, p);
+}
+
+/*
+ * <summary> Addition operator overload for particle swarm. <summary>
+ */
+particle_mixture particle_mixture::operator+(const particle_mixture& _pc) const
+{
+	// TODO: Optimize?
+	particle_mixture result(*this);
+	result.components.insert(std::end(components), std::begin(_pc.components), std::end(_pc.components));
+	return result;
+}
+// Define the static variables
+std::random_device particle_mixture::rDev;
+std::mt19937 particle_mixture::generator = std::mt19937(rDev());
+std::uniform_real_distribution<double> particle_mixture::itsd = std::uniform_real_distribution<double>(0.0, 1.0);
+
+/*
+* <summary> Returns effective number of particles. </summary>
+*/
+double particle_mixture::getEffectiveN()
+{
+	double result = 0.0;
+	for (auto p : components)
+		result += p.w * p.w;
+
+	return 1.0 / result;
+}
+
+/**
+* <summary> Inverse transform sampling </summary>
+*/
+void particle_mixture::resampleITS(const size_t& _size)
+{
+	double rIdx;
+	std::vector<double> cdf(components.size());		// Cumulative distribution function
+	std::vector<particle> resampled(_size);
+
+	if (weightSum() != 1)
+		normalizeWeights();
+
+	// Sort elements in the descending order
+	std::sort(components.begin(), components.end(), [](particle a, particle b) {return b.w < a.w; });
+
+	// Calculate the CDF
+	cdf[0] = components[0].w;
+	for (size_t i = 1; i < components.size(); i++)
+		cdf[i] += cdf[i - 1] + components[i].w;
+
+	// Inverse Transform Sampling
+	for (size_t i = 0; i < _size; i++)
+	{
+		rIdx = itsd(generator);				// Generate a random number between 0 and 1
+											// TODO: Optimize
+											// Get the closest particle index from the cdf
+		auto closest = std::min_element(cdf.begin(), cdf.end(),
+			[rIdx](double x, double y) {return abs(x - rIdx) < abs(y - rIdx); });
+		resampled[i] = *closest;
+	}
+
+	components = resampled;
+}
+
+void particle_mixture::populateRandomRAZEL(const Sensor& _sensor, const VectorXd& _lBound, const VectorXd& _uBound)
+{
+	if (components.size() == 0)
+		return;
+
+	VectorXd randRAZEL = VectorXd::Zero(3), randTEME = VectorXd::Zero(3);
+	double weight = 1.0 / components.size();
+
+	std::uniform_real_distribution<double> dr(_lBound(0), _uBound(0));
+	std::uniform_real_distribution<double> da(_lBound(1), _uBound(1));
+	std::uniform_real_distribution<double> de(_lBound(2), _lBound(2));
+
+	for (size_t i = 0; i < components.size(); i++)
+	{
+		randRAZEL << dr(generator), da(generator), de(generator);
+		randTEME = Astro::razelToTEME(randRAZEL, _sensor.getPosition(), _sensor.getDateJD(),
+			_sensor.getLOD(), _sensor.getXp(), _sensor.getYp());
+
+		components[i].m = randTEME;
+		components[i].w = weight;
+	}
+}
 

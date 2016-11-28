@@ -13,7 +13,7 @@
 #include "GMPHDFilter.h"
 #include "GMJoTTFilter.hpp"
 #include "BGMJoTTFilter.hpp"
-//#include "SMCJoTTFilter.hpp"
+#include "SMCJoTTFilter.hpp"
 
 #include "ExtendedKalmanFilter.h"
 #include "UnscentedKalmanFilter.h"
@@ -59,7 +59,7 @@ int main(int arcg, char** argv)
 	parameters p = readParametersYAML(filename_params);
 	testFilter(p);
 	//testSingleTargetFilter(p);
- 	return 0; 
+ 	return 0;
 }
 
 /*
@@ -245,13 +245,13 @@ void testFilter(parameters & _p)
 		std::function<VectorXd(const VectorXd&, const double&, const VectorXd&)> propagate = Astro::integrationPrediction;
 		std::function<VectorXd(const VectorXd&, const Sensor&)> observe = observeTEMEToRAZEL;
 
-		//SMCJoTTFilter smcjott(propagate, observe, _p.birthSize, _p.birthIntensity, _p.pS, _p.pB, _p.qInit, _p.noiseAcceleration);
-		//particle_mixture ps(_p.partcileSwarmSize, _p.stateDim);
+		SMCJoTTFilter smcjott(propagate, observe, _p.birthSize, _p.birthIntensity, _p.pS, _p.pB, _p.qInit, _p.noiseAcceleration);
+		particle_mixture ps(_p.partcileSwarmSize, _p.stateDim);
 
 		// New: 22/11/2016 Added temporary parameters for birth testing
-		//smcjott.setLowerBirthBoundRange(_p.lowerBirthBoundRange);
-		//smcjott.setUpperBirthBoundRange(_p.upperBirthBoundRange);
-		//smcjott.setBirthSigmaRange(_p.birthSigmaRange);
+		smcjott.setLowerBirthBoundRange(_p.lowerBirthBoundRange);
+		smcjott.setUpperBirthBoundRange(_p.upperBirthBoundRange);
+		smcjott.setBirthSigmaRange(_p.birthSigmaRange);
 
 		//runSMCJoTTFilter(smcjott, sensor, ps, _p);
 
