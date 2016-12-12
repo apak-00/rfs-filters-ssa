@@ -55,7 +55,7 @@ VectorXd observeTEMEToRAZEL(const VectorXd& _teme, const Sensor& _sensor)
 // Main
 int main(int arcg, char** argv) 
 {	
-	string filename_params = "config/config-ukf-tdm.yaml";
+	string filename_params = "config/config-smcjott.yaml";
 	parameters p = readParametersYAML(filename_params);
 	testFilter(p);
 	//testSingleTargetFilter(p);
@@ -253,7 +253,7 @@ void testFilter(parameters & _p)
 		smcjott.setUpperBirthBoundRange(_p.upperBirthBoundRange);
 		smcjott.setBirthSigmaRange(_p.birthSigmaRange);
 
-		//runSMCJoTTFilter(smcjott, sensor, ps, _p);
+		runSMCJoTTFilter(smcjott, sensor, ps, _p);
 
 	}
 	else if (!strcmp(_p.multipleTargetFilterType.c_str(), "gmphd")) 
@@ -776,7 +776,7 @@ void runPHDFilter(MultiTargetFilter& _filter, Sensor& _sensor, Mixture& _mixture
 template<typename MultiTargetFilter, typename Swarm>
 void runSMCJoTTFilter(MultiTargetFilter & _filter, Sensor & _sensor, Swarm & _mixture, parameters & _p)
 {
-	VectorXd info(11), infoTemp, bearing(2), temp(3);
+	VectorXd info(11), infoTemp, bearing(2), temp(3), avgEstimate, avgEstimateRAZEL;
 	auto measurements = _sensor.getZ();
 	bool dtCalculated = false;
 	Astro::date datePrev, dateCurr;
@@ -784,15 +784,10 @@ void runSMCJoTTFilter(MultiTargetFilter & _filter, Sensor & _sensor, Swarm & _mi
 	double deg2rad = M_PI / 180.0;
 
 	// IO
-	TDMReader tdmReader;
 	bool tdm = false, sim = false;
-	YAML::Emitter result, resultSmoothing;
-	result << YAML::BeginSeq;
-	resultSmoothing << YAML::BeginSeq;
-	ofstream outputCSV("Results/result_gmjott.csv");
-		//outputYAML("Results/result_gmjott.yaml"),
-		//outputYAMLSmoothing("Results/result_gmjott_smoothing.yaml");		// Output file 
+	TDMReader tdmReader;
 	ifstream input;
+	ofstream outputCSV("Results/result_gmjott.csv");
 
 #ifdef MY_DEBUG
 	// Debug
@@ -893,7 +888,7 @@ void runSMCJoTTFilter(MultiTargetFilter & _filter, Sensor & _sensor, Swarm & _mi
 		_sensor.setBearing(bearing);
 
 		// TEMPORARY
-		if (i == 0)
+		if (i == 1)
 		{
 			VectorXd lBound(3), uBound(3);
 			double t = 0.1;
@@ -901,12 +896,15 @@ void runSMCJoTTFilter(MultiTargetFilter & _filter, Sensor & _sensor, Swarm & _mi
 			uBound << 1500, info(1) + t, info(2) + t;
 
 			_mixture.populateRandomRAZEL(_sensor, lBound, uBound);
+
+			cout << "Mixture size: " << _mixture.size() << endl;
 		}
 
 		_filter.predict(_mixture, _sensor);
 		_filter.update(_mixture, _sensor);
 
-		//printEstimatesToCSVFull(_filter, outputCSV, estimates, _sensor, i, 0);
+		for (auto cc : _mixture.components)
+			cout << cc.w << " " << cc.m.transpose() << endl;
 
 		// Console output
 		double z;
@@ -915,7 +913,9 @@ void runSMCJoTTFilter(MultiTargetFilter & _filter, Sensor & _sensor, Swarm & _mi
 		else
 			z = _sensor.getZ(0)(0);
 
-		cout << i << " " << z << " [" << "/" << _mixture.size() << "][" << _filter.getQ() << "]";
+		avgEstimate = _mixture.getWeightedAverage();
+		avgEstimateRAZEL = Astro::temeToRAZEL(avgEstimate, _sensor.getPosition(), _sensor.getDateJD(), _sensor.getLOD(), _sensor.getXp(), _sensor.getYp());
+		cout << i << " " << z << " [" << _mixture.size() << "]" << avgEstimateRAZEL.transpose();
 		cout << endl;
 	}
 

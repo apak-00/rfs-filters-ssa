@@ -34,7 +34,7 @@ public:
 	* <param name = "_kf"> An instance of the Kalman Filter for single target state propagation. </param>
 	* <param name = "_nBirthComponents"> Number of birth components for the Gaussian Mixture during the prediction step. </param>
 	* <param name = "_birthIntensity"> Intensity of the birth components. </param>
-	* <param name = "_pS"> Probability of target survival. </param>
+	* <param name = "_pm"> Probability of target survival. </param>
 	* <param name = "_iCov"> Initial target state uncertainty (covariance). </param>
 	* <param name = "_lBound"> Lower state bound for random state generation. </param>
 	* <param name = "_uBound"> Upper state bound for random state generation. </param>
@@ -42,8 +42,8 @@ public:
 	* <param name = "_pB"> Probability of target birth. </param>
 	*/
 	GMJoTTFilter(std::shared_ptr<KalmanFilter> _kf, const size_t& _nBirthComponents, const double & _birthIntensity,
-		const double & _pS, const MatrixXd & _iCov, const VectorXd & _lBound, const VectorXd & _uBound, const double & _q, const double& _pB) :
-		nBirthComponents(_nBirthComponents), birthIntensity(_birthIntensity), pS(_pS), initialCovariance(_iCov),
+		const double & _pm, const MatrixXd & _iCov, const VectorXd & _lBound, const VectorXd & _uBound, const double & _q, const double& _pB) :
+		nBirthComponents(_nBirthComponents), birthIntensity(_birthIntensity), pS(_pm), initialCovariance(_iCov),
 		lowerBound(_lBound), upperBound(_uBound), q(_q), pB(_pB) 
 	{
 		filter = _kf;
@@ -97,6 +97,7 @@ public:
 					m << range, _sensor.getBearing(), 0, 0, 0;
 					birth = Astro::razelToTEME(m, _sensor.getPosition(), _sensor.getDateJD(), _sensor.getLOD(), _sensor.getXp(), _sensor.getYp());
 				}
+
 				_gmm.addComponent(gaussian_component(birth, initialCovariance, initialWeight, _gmm.idCounter++));
 			}
 		}
@@ -126,7 +127,6 @@ public:
 				gaussian_component gct(_gmm[j]);
 				filter->update(gct, _sensor, i);
 				
-
 				auto qk = (1.0 / sqrt(pow(2.0 * M_PI, _sensor.getZDim()) * _sensor.getS().determinant())) 
 					* exp(-0.5 * MathHelpers::mahalanobis(_sensor.getZ(i), _sensor.getPredictedZ(), _sensor.getS()));
 				gct.w *= qk / (_sensor.getLambda() * cz);

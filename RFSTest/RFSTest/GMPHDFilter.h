@@ -22,7 +22,7 @@ protected:
 
 public:
 	GMPHDFilter(std::shared_ptr<KalmanFilter> _kf, const unsigned int& _nBirthComponents, const double& _birthIntensity,
-		const double& _pS, const MatrixXd& _iCov, const VectorXd& _lBound, const VectorXd& _uBound);
+		const double& _pm, const MatrixXd& _iCov, const VectorXd& _lBound, const VectorXd& _uBound);
 
 	virtual void predict(gaussian_mixture& _gmm, Sensor& _sensor);
 	virtual void update(gaussian_mixture& _gmm, Sensor& _sensor);

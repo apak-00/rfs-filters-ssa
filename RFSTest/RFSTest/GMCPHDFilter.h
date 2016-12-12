@@ -24,7 +24,7 @@ private:
 
 public:
 	GMCPHDFilter(std::shared_ptr<KalmanFilter> _kf, const unsigned int& _nBirthComponents, const double& _birthIntensity,
-		const double& _pS, const MatrixXd& _iCov, const VectorXd& _lBound, const VectorXd& _uBound, const size_t& _NMax);
+		const double& _pm, const MatrixXd& _iCov, const VectorXd& _lBound, const VectorXd& _uBound, const size_t& _NMax);
 
 	virtual void predict(gaussian_mixture& _gmm, Sensor& _sensor);
 	virtual void update(gaussian_mixture& _gmm, Sensor& _sensor);

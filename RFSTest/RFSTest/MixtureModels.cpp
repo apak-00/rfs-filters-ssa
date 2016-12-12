@@ -466,21 +466,33 @@ void particle_mixture::populateRandomRAZEL(const Sensor& _sensor, const VectorXd
 	if (components.size() == 0)
 		return;
 
-	VectorXd randRAZEL = VectorXd::Zero(3), randTEME = VectorXd::Zero(3);
+	VectorXd randRAZEL = VectorXd::Zero(6), randTEME = VectorXd::Zero(6);
 	double weight = 1.0 / components.size();
 
-	std::uniform_real_distribution<double> dr(_lBound(0), _uBound(0));
-	std::uniform_real_distribution<double> da(_lBound(1), _uBound(1));
-	std::uniform_real_distribution<double> de(_lBound(2), _lBound(2));
+	std::uniform_real_distribution<double> dr(_lBound(0), _uBound(0));		// Distribution for Range
+	std::uniform_real_distribution<double> da(_lBound(1), _uBound(1));		// Distribution for Azimuth
+	std::uniform_real_distribution<double> de(_lBound(2), _lBound(2));		// Distribution for Elevation
 
 	for (size_t i = 0; i < components.size(); i++)
 	{
-		randRAZEL << dr(generator), da(generator), de(generator);
+		randRAZEL << dr(generator), da(generator), de(generator), 0, 0, 0;
 		randTEME = Astro::razelToTEME(randRAZEL, _sensor.getPosition(), _sensor.getDateJD(),
 			_sensor.getLOD(), _sensor.getXp(), _sensor.getYp());
 
 		components[i].m = randTEME;
 		components[i].w = weight;
 	}
+}
+
+VectorXd particle_mixture::getWeightedAverage()
+{
+	normalizeWeights();
+
+	VectorXd result = VectorXd::Zero(6);
+
+	for (auto c : components)
+		result += c.m * c.w;
+
+	return result;
 }
 

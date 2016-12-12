@@ -33,7 +33,7 @@ public:
 	* <param name = "_kf"> An instance of the Kalman Filter for single target state propagation. </param>
 	* <param name = "_nBirthComponents"> Number of birth components for the Gaussian Mixture during the prediction step. </param>
 	* <param name = "_birthIntensity"> Intensity of the birth components. </param>
-	* <param name = "_pS"> Probability of target survival. </param>
+	* <param name = "_pm"> Probability of target survival. </param>
 	* <param name = "_iCov"> Initial target state uncertainty (covariance). </param>
 	* <param name = "_lBound"> Lower state bound for random state generation. </param>
 	* <param name = "_uBound"> Upper state bound for random state generation. </param>
@@ -41,8 +41,8 @@ public:
 	* <param name = "_pB"> Probability of target birth. </param>
 	*/
 	BGMJoTTFilter(std::shared_ptr<KalmanFilter> _kf, const size_t & _nBirthComponents, const double & _birthIntensity,
-		const double & _pS, const MatrixXd & _iCov, const VectorXd & _lBound, const VectorXd & _uBound, const double & _q, const double& _pB, 
-		const double& _epsilon) : nBirthComponents(_nBirthComponents), birthIntensity(_birthIntensity), pS(_pS), initialCovariance(_iCov),
+		const double & _pm, const MatrixXd & _iCov, const VectorXd & _lBound, const VectorXd & _uBound, const double & _q, const double& _pB, 
+		const double& _epsilon) : nBirthComponents(_nBirthComponents), birthIntensity(_birthIntensity), pS(_pm), initialCovariance(_iCov),
 		lowerBound(_lBound), upperBound(_uBound), q(_q), pB(_pB), epsilon(_epsilon) 
 	{
 		filter = _kf;
@@ -97,7 +97,7 @@ public:
 
 		q = qPred;
 
-		// Update the beta components
+		// Increase the variance of beta component (noise)
 		for (auto &bgc : _bgmm.components)
 			updateBetaComponent(bgc, filter->getT() * 0.01);
 	}
@@ -154,7 +154,6 @@ public:
 				beta_gaussian_component bgct(_bgmm[j]);
 				filter->update(bgct, _sensor, i);
 
-				
 				auto qk = (1.0 / sqrt(pow(2.0 * M_PI, _sensor.getZDim()) * _sensor.getS().determinant()))
 					* exp(-0.5 * MathHelpers::mahalanobis(_sensor.getZ(i), _sensor.getPredictedZ(), _sensor.getS()));
 

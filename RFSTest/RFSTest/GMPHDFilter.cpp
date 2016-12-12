@@ -9,14 +9,14 @@
  * <param name = "_kf"> An instance of the Kalman Filter for single target state propagation. </param>
  * <param name = "_nBirthComponents"> Number of birth components for the Gaussian Mixture during the prediction step. </param>
  * <param name = "_birthIntensity"> Intensity of the birth components. </param>
- * <param name = "_pS"> Probability of target survival. </param>
+ * <param name = "_pm"> Probability of target survival. </param>
  * <param name = "_iCov"> Initial target state uncertainty (covariance). </param>
  * <param name = "_lBound"> Lower state bound for random state generation. </param>
  * <param name = "_uBound"> Upper state bound for random state generation. </param>
  */
 GMPHDFilter::GMPHDFilter(std::shared_ptr<KalmanFilter> _kf, const unsigned int & _nBirthComponents, const double & _birthIntensity,
-	const double & _pS, const MatrixXd& _iCov, const VectorXd & _lBound, const VectorXd & _uBound) : nBirthComponents(_nBirthComponents),
-	birthIntensity(_birthIntensity), pS(_pS), initialCovariance(_iCov), lowerBound(_lBound), upperBound(_uBound) 
+	const double & _pm, const MatrixXd& _iCov, const VectorXd & _lBound, const VectorXd & _uBound) : nBirthComponents(_nBirthComponents),
+	birthIntensity(_birthIntensity), pS(_pm), initialCovariance(_iCov), lowerBound(_lBound), upperBound(_uBound) 
 	{
 		filter = _kf;
 	}

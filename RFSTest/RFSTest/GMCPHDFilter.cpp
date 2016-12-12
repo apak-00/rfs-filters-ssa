@@ -4,8 +4,8 @@
 #include "MathHelpers.h"
 
 GMCPHDFilter::GMCPHDFilter(std::shared_ptr<KalmanFilter> _kf, const unsigned int & _nBirthComponents, const double & _birthIntensity, 
-	const double & _pS, const MatrixXd & _iCov, const VectorXd & _lBound, const VectorXd & _uBound, const size_t& _NMax) : 
-	nBirthComponents(_nBirthComponents), birthIntensity(_birthIntensity), pS(_pS), initialCovariance(_iCov), lowerBound(_lBound), upperBound(_uBound),
+	const double & _pm, const MatrixXd & _iCov, const VectorXd & _lBound, const VectorXd & _uBound, const size_t& _NMax) : 
+	nBirthComponents(_nBirthComponents), birthIntensity(_birthIntensity), pS(_pm), initialCovariance(_iCov), lowerBound(_lBound), upperBound(_uBound),
 	NMax(_NMax)
 {
 	filter = _kf;
@@ -14,6 +14,9 @@ GMCPHDFilter::GMCPHDFilter(std::shared_ptr<KalmanFilter> _kf, const unsigned int
 	cardinality = VectorXd::Zero(_NMax);
 }
 
+/*
+ * <summary> Prediction function for Gaussian Mixture CPHD filter. </suummary>
+ */
 void GMCPHDFilter::predict(gaussian_mixture & _gmm, Sensor & _sensor)
 {
 	double range;

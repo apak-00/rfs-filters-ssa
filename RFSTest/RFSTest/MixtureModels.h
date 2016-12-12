@@ -327,4 +327,8 @@ struct particle_mixture : mixture <particle>
 	double getEffectiveN();
 	void resampleITS(const size_t& _size);
 	void populateRandomRAZEL(const Sensor& _sensor, const VectorXd& _lBound, const VectorXd& _uBound);
+
+	VectorXd getWeightedAverage();
 };
+
+std::ostream& operator << (std::ostream& _os, const particle_mixture& _pm);

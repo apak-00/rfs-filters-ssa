@@ -22,7 +22,7 @@ sensor_configuration:
   R:			[0.005041, 0.05, 0.05]
 
 filter_parameters_general:
-  noise_acceleration:	[1e-4, 1e-4, 1e-4]
+  noise_acceleration:	[1e-3, 1e-3, 1e-3]
   noise_z_acc:			[0.05, 1e-4, 1e-4]
   
 filter_parameters_single_target:

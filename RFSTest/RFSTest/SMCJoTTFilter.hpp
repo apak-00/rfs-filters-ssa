@@ -37,9 +37,9 @@ protected:
 public:
 	SMCJoTTFilter(std::function<VectorXd(const VectorXd&, const double&, const VectorXd&)> _propagate, 
 		std::function<VectorXd(const VectorXd&, const Sensor&)> _observe, 
-		const size_t& _nBirthComponents, const double & _birthWeight, const double & _pS, const double& _pB, const double & _q, 
+		const size_t& _nBirthComponents, const double & _birthWeight, const double & _pm, const double& _pB, const double & _q, 
 		VectorXd _noise) 
-		: nBirthComponents(_nBirthComponents), pS(_pS),  q(_q), pB(_pB), noise(_noise), b(_nBirthComponents, 6)
+		: nBirthComponents(_nBirthComponents), pS(_pm),  q(_q), pB(_pB), noise(_noise), b(_nBirthComponents, 6), birthWeight(_birthWeight)
 	{
 		propagate = _propagate;
 		observe = _observe;
@@ -58,26 +58,20 @@ public:
 	const auto getUpperBirthBoundRange() { return upperBirthBoundRange; }
 	const auto getBirthSigma() { return birthSigmaRange; }
 
-	void setLowerBirthBoundRange(const decltype(lowerBirthBoundRange)& _lowerBirthBoundRange) 
-	{
-		lowerBirthBoundRange = _lowerBirthBoundRange;
-	}
-
-	void setUpperBirthBoundRange(const decltype(upperBirthBoundRange)& _lowerBirthBoundRange)
-	{
-		upperBirthBoundRange = _lowerBirthBoundRange;
-	}
-
-	void setBirthSigmaRange(const decltype(birthSigmaRange)& _birthSigmaRange)
-	{
-		birthSigmaRange = _birthSigmaRange;
-	}
+	void setLowerBirthBoundRange(const decltype(lowerBirthBoundRange)& _lowerBirthBoundRange) { lowerBirthBoundRange = _lowerBirthBoundRange; }
+	void setUpperBirthBoundRange(const decltype(upperBirthBoundRange)& _lowerBirthBoundRange) { upperBirthBoundRange = _lowerBirthBoundRange; }
+	void setBirthSigmaRange(const decltype(birthSigmaRange)& _birthSigmaRange) { birthSigmaRange = _birthSigmaRange; }
 
 	/*
-	 * <summary> Prediction </summary>
+	 * <summary> Prediction for the Sequential Monte-Carlo JoTT filter. </summary>
+	 * <param name = "_pm"> A particle mixture to predict. </param>
+	 * <param name = "_sensor"> A sensor to take the bering from in order to perform the birth. </param>
 	 */
-	void predict(particle_mixture& _ps, Sensor& _sensor)
+	void predict(particle_mixture& _pm, Sensor& _sensor)
 	{		
+		// Debug
+		std::cout << "w = " << _pm.components[0].w << " | "<< _pm.components[0].m.transpose() << std::endl;
+
 		double t, wb;
 
 		// Probability of target existence prediction (28)
@@ -86,7 +80,7 @@ public:
 		t = pS * q / qPred;
 
 		// Mean prediction
-		for (auto &p : _ps.components)
+		for (auto &p : _pm.components)
 		{
 			propagate(p.m, dt, noise);
 			p.w *= t;
@@ -97,7 +91,7 @@ public:
 		auto zPrev = _sensor.getZPrev();
 		VectorXd tempBirth(6);
 
-		// If there are previous measurements, us their location to place birth components
+		// If there are previous measurements, use their location to place birth components
 		if (!zPrev.size()) 
 		{
 			// Number of birth components for each measurement
@@ -122,7 +116,7 @@ public:
 			}
 
 			// Concatenate predicted and birth components
-			_ps = _ps + b;
+			_pm = _pm + b;
 		}
 		// If no measurements are received in the previous timestep, perform random birth
 		else
@@ -138,42 +132,46 @@ public:
 				b.components[i].m = Astro::razelToTEME(tempBirth, _sensor.getPosition(), _sensor.getDateJD(),
 					_sensor.getLOD(), _sensor.getXp(), _sensor.getYp());
 			}
-
 		}
 	}
 
 	/*
-	 * <summary> Update </summary>
+	 * <summary> Update for the Sequential Monte-Carlo JoTT filter. </summary>
+	 * <param name = "_pm"> A particle mixture to update. </param>
+	 * <param name = "_sensor"> A sensor to take the measurement and other information from. </param>
 	 */
-	void update(particle_mixture& _ps, Sensor& _sensor)
+	void update(particle_mixture& _pm, Sensor& _sensor)
 	{
+		std::cout << "w = " << _pm.components[0].w << " | " << _pm.components[0].m.transpose() << std::endl;
+
 		double nThreshold = 200;
 		double cz = 1.0 / 57903 * 200;
 		auto pD = _sensor.getPD();
-		double I1 = _ps.weightSum() * pD, I2, wSum = 0, delta_k = 0, g = 0;
-		std::vector<double> ll(_ps.size(), 0);		// Likelihoods
-		size_t n = _ps.size();
+		double I1 = _pm.weightSum() * pD, I2, wSum = 0, delta_k = 0, g = 0;
+		std::vector<double> ll(_pm.size(), 0);		// Likelihoods
+		size_t n = _pm.size();
 
+		// Current measurement and predicted measurement
 		VectorXd z = VectorXd::Zero(3);
-		std::vector<VectorXd> zPred(_ps.size());
+		std::vector<VectorXd> zPred(_pm.size());
 
 		// Pre-calculate predicted measurements
-		for (size_t i = 0; i < _ps.size(); i++)
-			zPred[i] = observe(_ps.components[i].m, _sensor);
+		for (size_t i = 0; i < _pm.size(); i++)
+			zPred[i] = observe(_pm.components[i].m, _sensor);
 
-		// For each measurement
+		// Loop for each measurement ...
 		for (size_t i = 0; i < _sensor.getZ().size(); i++) 
 		{
 			z = _sensor.getZ(i);
-			n = _ps.size();
+			n = _pm.size();
 			I2 = 0;
 
-			// For each particle
-			for (size_t j = 0; j < _ps.components.size(); j++)
+			// Loop for each particle ...
+			for (size_t j = 0; j < _pm.components.size(); j++)
 			{
 				g = MathHelpers::gaussianLikelihood(z, zPred[j], _sensor.getS());	// Compute likelihood
 				ll[j] += g;		// Likelihood sum
-				I2 += pD * g * _ps.components[j].w;		// Approximate I2 integral (85)
+				I2 += pD * g * _pm.components[j].w;		// Approximate I2 integral (85)
 			}
 
 			delta_k += I2;
@@ -183,16 +181,16 @@ public:
 		q = (1 - delta_k) / (1 - q * delta_k) * q;
 
 		// Update the weights (87)
-		for (size_t i = 0; i < _ps.components.size(); i++)
-			_ps.components[i].w = (1 - pD + pD * ll[i] / cz) * _ps.components[i].w;
+		for (size_t i = 0; i < _pm.components.size(); i++)
+			_pm.components[i].w = (1 - pD + pD * ll[i] / cz) * _pm.components[i].w;
 		
 		// Normalize the weights
-		_ps.normalizeWeights();
+		_pm.normalizeWeights();
 		
 		// Sampling importance re-sampling
 		// If the effective number of particles is less than a threshold, resample:
-		if (_ps.getEffectiveN() < nThreshold)
-			_ps.resampleITS(1000);
+		if (_pm.getEffectiveN() < nThreshold)
+			_pm.resampleITS(1000);
 	}
 };
 

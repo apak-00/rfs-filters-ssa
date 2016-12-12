@@ -35,6 +35,7 @@
     <ClInclude Include="MathHelpers.h" />
     <ClInclude Include="Sensor.h" />
     <ClInclude Include="SingleTargetFilter.h" />
+    <ClInclude Include="SMCJoTTFilter.hpp" />
     <ClInclude Include="UnscentedKalmanFilter.h" />
     <ClInclude Include="unscented_sampler.hpp" />
   </ItemGroup>

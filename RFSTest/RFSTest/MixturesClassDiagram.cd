@@ -56,5 +56,12 @@
       <FileName>MixtureModels.h</FileName>
     </TypeIdentifier>
   </Struct>
+  <Struct Name="particle_mixture">
+    <Position X="4.25" Y="0.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAoAABAAAAAQAAAACAAgBAAAAAAAAAAAAAAgAAAAAAI=</HashCode>
+      <FileName>MixtureModels.h</FileName>
+    </TypeIdentifier>
+  </Struct>
   <Font Name="Segoe UI" Size="9" />
 </ClassDiagram>
