@@ -2,7 +2,7 @@
 #include <Eigen/Dense>
 #include "GMRFSFilter.h"
 #include "Sensor.h"
-#include "gmm.h"
+#include "MixtureModels.h"
 
 /*
 * <summary> Beta-Gaussian Mixture Joint Target Detection and Tracking class. </summary>
@@ -33,7 +33,7 @@ public:
 	* <param name = "_kf"> An instance of the Kalman Filter for single target state propagation. </param>
 	* <param name = "_nBirthComponents"> Number of birth components for the Gaussian Mixture during the prediction step. </param>
 	* <param name = "_birthIntensity"> Intensity of the birth components. </param>
-	* <param name = "_pS"> Probability of target survival. </param>
+	* <param name = "_pm"> Probability of target survival. </param>
 	* <param name = "_iCov"> Initial target state uncertainty (covariance). </param>
 	* <param name = "_lBound"> Lower state bound for random state generation. </param>
 	* <param name = "_uBound"> Upper state bound for random state generation. </param>
@@ -41,8 +41,8 @@ public:
 	* <param name = "_pB"> Probability of target birth. </param>
 	*/
 	BGMJoTTFilter(std::shared_ptr<KalmanFilter> _kf, const size_t & _nBirthComponents, const double & _birthIntensity,
-		const double & _pS, const MatrixXd & _iCov, const VectorXd & _lBound, const VectorXd & _uBound, const double & _q, const double& _pB, 
-		const double& _epsilon) : nBirthComponents(_nBirthComponents), birthIntensity(_birthIntensity), pS(_pS), initialCovariance(_iCov),
+		const double & _pm, const MatrixXd & _iCov, const VectorXd & _lBound, const VectorXd & _uBound, const double & _q, const double& _pB, 
+		const double& _epsilon) : nBirthComponents(_nBirthComponents), birthIntensity(_birthIntensity), pS(_pm), initialCovariance(_iCov),
 		lowerBound(_lBound), upperBound(_uBound), q(_q), pB(_pB), epsilon(_epsilon) 
 	{
 		filter = _kf;
@@ -74,13 +74,14 @@ public:
 			birthRanges.push_back((double)(i + 2) * 200);
 
 		if (nBirthComponents == 1)
-			birthRanges[0] = 1000; //+ (double)(500) * (double)rand() / (double)RAND_MAX - 250;
+			birthRanges[0] = 1000 + rand() % 500 - 250;
 
 		// Birth
 		for (size_t i = 0; (i < nBirthComponents); i++)
 		{
 			// Uniform birth test
 			range = birthRanges[i];
+			std::cout << " B: " << range << " '";
 
 			if (_bgmm.dim() == 2)
 				birth << range, 0;
@@ -91,12 +92,12 @@ public:
 				birth = Astro::razelToTEME(m, _sensor.getPosition(), _sensor.getDateJD(), _sensor.getLOD(), _sensor.getXp(), _sensor.getYp());
 			}
 
-			_bgmm.addComponent(beta_gaussian_component(birth, initialCovariance, initialWeight, _bgmm.idCounter++, 1, 1));
+			_bgmm.addComponent(beta_gaussian_component(birth, initialCovariance, initialWeight, _bgmm.idCounter++, 10, 90));
 		}
 
 		q = qPred;
 
-		// Update the beta components
+		// Increase the variance of beta component (noise)
 		for (auto &bgc : _bgmm.components)
 			updateBetaComponent(bgc, filter->getT() * 0.01);
 	}
@@ -115,10 +116,10 @@ public:
 		_bgc.u *= theta;
 		_bgc.v *= theta;
 
-		if (_bgc.u > 10e10) _bgc.u = 10e10;
-		if (_bgc.u < 10e-10) _bgc.u = 10e-10;
-		if (_bgc.v > 10e10) _bgc.v = 10e10;
-		if (_bgc.v < 10e-10) _bgc.u = 10e-10;
+		if (_bgc.u > 10e10) _bgc.u = 10e4;
+		if (_bgc.u < 10e-10) _bgc.u = 10e-4;
+		if (_bgc.v > 10e10) _bgc.v = 10e4;
+		if (_bgc.v < 10e-10) _bgc.u = 10e-4;
 	}
 
 	/**
@@ -129,10 +130,7 @@ public:
 	*/
 	void update(beta_gaussian_mixture & _bgmm, Sensor & _sensor)
 	{
-		//double cz = 1.0 / 26678;
-		//double cz = 1.0 / 231609.0 * 100;	// Good
-		//double cz = 0.1;// 1.0 / 231609.0;			// Temporary fix for cz
-		double cz = 1.0 / 57903 * 21;
+		double cz = 1.0 / 57903 * 400;
 
 		size_t n0 = _bgmm.size();
 		double delta_k = 0, pDWeightedSum = 0;
@@ -156,10 +154,8 @@ public:
 				beta_gaussian_component bgct(_bgmm[j]);
 				filter->update(bgct, _sensor, i);
 
-				double mah = _sensor.zMahalanobis(Astro::temeToSEZ(bgct.m, _sensor.getPosition(), _sensor.getDateJD(), _sensor.getLOD(), _sensor.getXp(), _sensor.getYp()), i);
-				auto qk = (1.0 / sqrt(pow(2.0 * M_PI, _sensor.getZDim()) * _sensor.getS().determinant())) * exp(-0.5 * mah);
-				
-				//std::cout << j << " qk = " << qk << std::endl;
+				auto qk = (1.0 / sqrt(pow(2.0 * M_PI, _sensor.getZDim()) * _sensor.getS().determinant()))
+					* exp(-0.5 * MathHelpers::mahalanobis(_sensor.getZ(i), _sensor.getPredictedZ(), _sensor.getS()));
 
 				// Update weight
 				bgct.w *= pD[j] * qk / (_sensor.getLambda() * cz);

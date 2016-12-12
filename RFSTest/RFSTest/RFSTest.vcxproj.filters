@@ -15,16 +15,10 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="gmm.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="KalmanFilter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Sensor.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="GMPHDFilter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="GMJoTTFilter.hpp">
@@ -48,9 +42,6 @@
     <ClInclude Include="SingleTargetFilter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="GMRFSFilter.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="BGMJoTTFilter.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -60,11 +51,29 @@
     <ClInclude Include="IOHelpers.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="MathHelpers.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GMPHDFilter.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GMCPHDFilter.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="BernoulliSmoother.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GMRFSFilter.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="MixtureModels.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SMCJoTTFilter.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="gmm.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Source.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -92,13 +101,42 @@
     <ClCompile Include="IOHelpers.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="MathHelpers.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="GMCPHDFilter.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="BernoulliSmoother.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="MixtureModels.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
-    <None Include="config.yaml">
+    <None Include="config\config.yaml">
       <Filter>Resource Files</Filter>
     </None>
-    <None Include="ClassDiagram1.cd" />
-    <None Include="ClassDiagram.cd" />
+    <None Include="config\config-bgmjott-ukf-tdm.yaml">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="config\config-gmphd-tdm.yaml">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="config\config-ukf-netcdf.yaml">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="config\config-ukf-sim.yaml">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="config\config-ukf-tdm.yaml">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="config\config-smcjott.yaml">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="MixturesClassDiagram.cd" />
   </ItemGroup>
 </Project>

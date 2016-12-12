@@ -157,6 +157,11 @@ namespace IOHelpers
 
 		return e;
 	}
+
+	 bool TDMReader::isOpen()
+	 {
+		 return inputFile.is_open();
+	 }
 	
 	/**
 	 * <summary> Opens the input file stream of the .file if it was not invoked in the constructor. </summary>
@@ -227,7 +232,7 @@ namespace IOHelpers
 	 */
 	void TDMReader::TDMToYAML(const string & _filename)
 	{
-
+		// TODO: 
 	}
 
 	/**
@@ -242,6 +247,7 @@ namespace IOHelpers
 	}
 
 	/**
+	 * // TODO: Add checks (if the parameter exists or not).
 	 * <summary> Reads the yaml parameters for the RFS SSA application. </summary>
 	 * <param name = "_filename"> A .yaml parameter file. </param>
 	 * <returns> Parameters structure. </returns>
@@ -262,8 +268,8 @@ namespace IOHelpers
 		params.observationDim = config["sensor_configuration"]["observation_size"].as<size_t>();
 
 		params.sensorPosition = VectorXd(3);
-		params.sensorPosition << config["sensor_configuration"]["latitude"].as<double>(),
-			config["sensor_configuration"]["longitude"].as<double>(),
+		params.sensorPosition << config["sensor_configuration"]["latitude"].as<double>() * M_PI / 180.0,
+			config["sensor_configuration"]["longitude"].as<double>() * M_PI / 180.0,
 			config["sensor_configuration"]["altitude"].as<double>();
 
 		params.pD = config["sensor_configuration"]["pd"].as<double>();
@@ -290,7 +296,7 @@ namespace IOHelpers
 		params.multipleTargetFilterType = config["filter_parameters_multiple_target"]["type"].as<std::string>();
 		params.gaussianMixtureMaxSize = config["filter_parameters_multiple_target"]["gm_max_size"].as<size_t>();
 		params.birthType = config["filter_parameters_multiple_target"]["birth_type"].as<std::string>();
-		params.birthSize = config["filter_parameters_multiple_target"]["birth_num"].as<size_t>();
+		params.birthSize = config["filter_parameters_multiple_target"]["birth_num"].as<unsigned int>();
 
 		params.birthCovariance = MatrixXd::Zero(params.stateDim, params.stateDim);
 		for (size_t i = 0; i < params.stateDim; i++)
@@ -310,6 +316,36 @@ namespace IOHelpers
 		params.H = MatrixXd::Zero(params.observationDim, params.stateDim);
 		for (size_t i = 0; i < params.observationDim; i++)
 			params.H(i, i) = 1;
+
+		// Temporary variables
+		params.clutterMultiplierTemp = config["temp"]["clutter_mult_temp"].as<double>();
+		params.ukfSigmaSamplerW = config["temp"]["ukf_sigma_sampler_w"].as<double>();
+
+		params.pmx = config["other"]["polar_motion_x"].as<double>();
+		params.pmy = config["other"]["polar_motion_y"].as<double>();
+		params.lod = config["other"]["length_of_day"].as<double>();
+
+		// Newly added 18/11/2016
+		if (config["filter_parameters_general"]["noise_acceleration"])
+		{
+			// TODO: Change the dimension
+			size_t d = 3;
+			params.noiseAcceleration = VectorXd::Zero(d);
+			
+			for (size_t i = 0; i < d; i++)
+				params.noiseAcceleration(i) = config["filter_parameters_general"]["noise_acceleration"][i].as<double>();
+		}
+
+		// Newly added 21/11/2016
+		if (config["filter_parameters_multiple_target"]["lower_birth_bound_range_razel"])
+			params.lowerBirthBoundRange = config["filter_parameters_multiple_target"]["lower_birth_bound_range_razel"].as<double>();
+		if (config["filter_parameters_multiple_target"]["upper_birth_bound_range_razel"])
+			params.upperBirthBoundRange = config["filter_parameters_multiple_target"]["upper_birth_bound_range_razel"].as<double>();
+		if (config["filter_parameters_multiple_target"]["birth_sigma_range"])
+			params.birthSigmaRange = config["filter_parameters_multiple_target"]["birth_sigma_range"].as<double>();
+
+		if (config["filter_parameters_multiple_target"]["smc_max_size"])
+			params.partcileSwarmSize = config["filter_parameters_multiple_target"]["smc_max_size"].as<size_t>();
 
 		return params;
 	}
@@ -373,6 +409,23 @@ namespace IOHelpers
 		for (size_t i = 0; i < (size_t)_v.size() - 1; i++)
 			_os << _v(i) << ",";
 		_os << _v(_v.size() - 1);
+	}
+
+	VectorXd readSimulatedEntry(ifstream & _input)
+	{
+		string buffer;
+		getline(_input, buffer);
+		vector<string> elements;
+		split(buffer, ',', elements);
+		VectorXd result(elements.size());
+
+		if (elements.size() != 0)
+		{
+			for (size_t i = 0; i < elements.size(); i++)
+				result[i] = stod(elements[i]);
+		}
+
+		return result;
 	}
 
 	/**

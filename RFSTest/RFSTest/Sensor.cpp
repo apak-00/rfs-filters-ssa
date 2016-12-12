@@ -84,19 +84,6 @@ Sensor& Sensor::operator = (const Sensor& _s)
 }
 
 /**
-* <summary> Calculates Mahalanobis distance between the
-* provided mean and the measurement z. </summary>
-* <param name = "mean"> Mean vector from Kalman filter. </param>
-* <returns> The Mahalanobis distance. </returns>
-*/
-double Sensor::zMahalanobis(const VectorXd& mean, const size_t& _mN) {
-
-	VectorXd d = z.at(_mN) - Astro::sezToRAZEL(mean).head(3);
-	//std::cout << "S: "<< S << std::endl;
-	return d.transpose() * S.llt().solve(d);
-}
-
-/**
  * <summary> Returns the Julian Day number for the current sensor date. </summary>
  * <returns> The Julian Day number. </returns>
  */

@@ -19,8 +19,8 @@ class Sensor
 	friend class KalmanFilter;  // For ease of access during update step
 	friend class ExtendedKalmanFilter;
 	friend class UnscentedKalmanFilter;
-	friend class EKF;
 	friend class GMPHDFilter;
+	friend class GMCPHDFilter;
 
 protected:
 	size_t zDim;  // Observation dimension
@@ -30,10 +30,14 @@ protected:
 	double V;           // ???
 	double kappa;       // Lambda * clutter distribution, Poisson
 
-	std::vector<VectorXd> z;	// Measurements' vector
+	std::vector<VectorXd> z;		// Measurements' vector
+	std::vector<VectorXd> zPrev;	// Previous measurements
 	MatrixXd R;         // Observation noise
 	MatrixXd H;         // Observation matrix (state space -> observation space)
 	MatrixXd S;
+
+	// TODO: Remove in the future
+	VectorXd predictedZ;
 
 	VectorXd position;  // Sensor positionin WGS-84
 	VectorXd bearing;   // Sensor bearing and bearing rates
@@ -58,8 +62,6 @@ public:
 	Sensor(const Sensor& _sensor);
 	Sensor& operator=(const Sensor& _sensor);
 
-	double zMahalanobis(const VectorXd & mean, const size_t& _mN);
-
 	double getDateJD() const;
 
 	/* Accessors and mutators */
@@ -69,6 +71,7 @@ public:
 	const auto getZDim() const { return zDim; }
 	const auto getSDim() const { return sDim; }
 	const auto getZ() const { return z; }
+	const auto getZPrev() const { return zPrev; }
 	const auto getZ(const size_t& _id) { return z[_id]; }
 	const auto getR() const { return R; }
 	const auto getH() const { return H; }
@@ -82,6 +85,9 @@ public:
 	const auto getXp() const { return xp; }
 	const auto getYp() const { return yp; }
 	const auto getLOD() const { return lod; }
+
+	// TODO: Remove in the future
+	const auto getPredictedZ() const { return predictedZ; }
  
 	void setPD(const decltype(pD)& _pD) { pD = _pD; }
 	void setLambda(const decltype(lambda) & _lambda) { lambda = _lambda; }
@@ -89,6 +95,7 @@ public:
 	void setZDim(const decltype(zDim) & _zDim) { zDim = _zDim; }
 	void setSDim(const decltype(sDim) & _sDim) { sDim = _sDim; }
 	void setZ(const decltype(z) & _z) { z = _z; }
+	void setZPrev(const decltype(zPrev) _zPrev) { zPrev = _zPrev; };
 	void setR(const decltype(R) & _R) { R = _R; }
 	void setH(const decltype(H) & _H) { H = _H; }
 	void setS(const decltype(S) & _S) { S = _S; }
@@ -101,6 +108,9 @@ public:
 	void setXp(const decltype (xp)& _xp) { xp = _xp; }
 	void setYp(const decltype (yp)& _yp) { yp = _yp; }
 	void setLOD(const decltype(lod)& _lod) { lod = _lod; }
+
+	// TODO: Remove in the future
+	void setPredictedZ(const decltype(predictedZ)& _pz) { predictedZ = _pz; }
 };
 
 #endif // SENSOR_H

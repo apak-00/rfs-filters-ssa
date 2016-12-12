@@ -1,4 +1,5 @@
 #include "ExtendedKalmanFilter.h"
+#include "unscented_sampler.hpp"
 #include <iostream>
 
 /**
@@ -29,7 +30,7 @@ void ExtendedKalmanFilter::predict(gaussian_component & _gc)
 {
 	if (_gc.P.block<3, 3>(0, 0).determinant() < 56)
 		_gc.kindaConverged = true;
-	
+
 	if (false && _gc.kindaConverged)
 	{
 		VectorXd temp(_gc.m.size());
@@ -37,7 +38,7 @@ void ExtendedKalmanFilter::predict(gaussian_component & _gc)
 		_gc.m = temp;
 		//_gc.P = shepperd * _gc.P * shepperd.transpose() + Q;
 	}
-	else 
+	else
 	{
 		//_gc.m = F * _gc.m;		// Constant Velocity Mean Update
 		_gc.m = Astro::integrationPrediction(_gc.m, dt);
@@ -58,18 +59,27 @@ void ExtendedKalmanFilter::update(gaussian_component & _gc, Sensor & _sensor, co
 	MatrixXd pSEZ = tf.transpose() * _gc.P * tf;
 	VectorXd mSEZ = Astro::temeToSEZ(_gc.m, _sensor.getPosition(), _sensor.getDateJD(), _sensor.getLOD(), _sensor.getXp(), _sensor.getYp());
 
-	//MatrixXd H = Astro::getSEZToRAZELJacobian(mSEZ, _sensor.getZDim());			// Hardcoded Jacobian
-	MatrixXd H = Astro::getSEZToRAZELJacobianFADBAD(mSEZ, _sensor.getZDim());
+	MatrixXd H = Astro::getSEZToRAZELJacobian(mSEZ, _sensor.getZDim());			// Hardcoded Jacobian
+	//MatrixXd H = Astro::getSEZToRAZELJacobianFADBAD(mSEZ, _sensor.getZDim());
 	
 	MatrixXd S = H * pSEZ * H.transpose() + _sensor.R;
 	MatrixXd K = pSEZ * H.transpose() * S.inverse();
 
-	mSEZ += K * (_sensor.z[_zNum] - Astro::sezToRAZEL(mSEZ).head(3));
+	VectorXd predZ = Astro::sezToRAZEL(mSEZ).head(3);
+
+	mSEZ += K * (_sensor.z[_zNum] - predZ);
 	pSEZ = (MatrixXd::Identity(_sensor.sDim, _sensor.sDim) - K * H) * pSEZ;
+
+	VectorXd oldM = _gc.m;
+	MatrixXd oldP = _gc.P;
 
 	_gc.m = Astro::sezToTEME(mSEZ, _sensor.getPosition(), _sensor.getDateJD(), _sensor.getLOD(), _sensor.getXp(), _sensor.getYp());
 	_gc.P = tf * pSEZ * tf.transpose();
 
 	_sensor.setH(H);
 	_sensor.setS(S);
+	
+	// Temporay fix for the predicted measurement
+	// TODO: Change in the future
+	_sensor.setPredictedZ(predZ);
 }

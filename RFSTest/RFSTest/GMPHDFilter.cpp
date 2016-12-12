@@ -1,3 +1,5 @@
+// TODO: Complete
+
 #include "GMPHDFilter.h"
 #include "MathHelpers.h"
 
@@ -7,14 +9,14 @@
  * <param name = "_kf"> An instance of the Kalman Filter for single target state propagation. </param>
  * <param name = "_nBirthComponents"> Number of birth components for the Gaussian Mixture during the prediction step. </param>
  * <param name = "_birthIntensity"> Intensity of the birth components. </param>
- * <param name = "_pS"> Probability of target survival. </param>
+ * <param name = "_pm"> Probability of target survival. </param>
  * <param name = "_iCov"> Initial target state uncertainty (covariance). </param>
  * <param name = "_lBound"> Lower state bound for random state generation. </param>
  * <param name = "_uBound"> Upper state bound for random state generation. </param>
  */
 GMPHDFilter::GMPHDFilter(std::shared_ptr<KalmanFilter> _kf, const unsigned int & _nBirthComponents, const double & _birthIntensity,
-	const double & _pS, const MatrixXd& _iCov, const VectorXd & _lBound, const VectorXd & _uBound) : nBirthComponents(_nBirthComponents),
-	birthIntensity(_birthIntensity), pS(_pS), initialCovariance(_iCov), lowerBound(_lBound), upperBound(_uBound) 
+	const double & _pm, const MatrixXd& _iCov, const VectorXd & _lBound, const VectorXd & _uBound) : nBirthComponents(_nBirthComponents),
+	birthIntensity(_birthIntensity), pS(_pm), initialCovariance(_iCov), lowerBound(_lBound), upperBound(_uBound) 
 	{
 		filter = _kf;
 	}
@@ -23,8 +25,12 @@ GMPHDFilter::GMPHDFilter(std::shared_ptr<KalmanFilter> _kf, const unsigned int &
  * <summary> Prediction step of the GM PHD filter. </summary>
  * <param name = "_gmm"> A reference to the Gaussian Mixture to be precited. </param>
  */
-void GMPHDFilter::predict(gaussian_mixture & _gmm)
+void GMPHDFilter::predict(gaussian_mixture & _gmm, Sensor& _sensor)
 {
+	double range;
+	std::vector<double> birthRanges;
+	VectorXd birth(_gmm.dim());
+
 	// Prediction for all of the components
 	for (auto &gc : _gmm.components) {
 		filter->predict(gc);
@@ -33,12 +39,42 @@ void GMPHDFilter::predict(gaussian_mixture & _gmm)
 
 	// New target birth
 	double initialWeight = birthIntensity / nBirthComponents;
+
+	if (_sensor.getZ().size() != 0)
+	{
+		for (size_t i = 0; i < nBirthComponents; i++)
+			birthRanges.push_back((double)(i + 2) * 200);
+
+		if (nBirthComponents == 1)
+		{
+			birthRanges[0] = 1000; // + rand() % 500 - 250;
+		}
+
+		for (size_t i = 0; (i < nBirthComponents) && (_gmm.size() < _gmm.nMax); i++)
+		{
+			// Uniform birth test
+			range = birthRanges[i];
+
+			if (_gmm.dim() == 2)
+				birth << range, 0;
+			else if (_gmm.dim() == 6)
+			{
+				VectorXd m(_gmm.dim());
+				m << range, _sensor.getBearing(), 0, 0, 0;
+				birth = Astro::razelToTEME(m, _sensor.getPosition(), _sensor.getDateJD(), _sensor.getLOD(), _sensor.getXp(), _sensor.getYp());
+			}
+			_gmm.addComponent(gaussian_component(birth, initialCovariance, initialWeight, _gmm.idCounter++));
+		}
+	}
+	
+		/*
 	for (size_t i = 0; (i < nBirthComponents) && (_gmm.size() < _gmm.nMax); i++)
 		// Changed 22/4/2016
 		_gmm.addComponent(gaussian_component(gaussian_mixture::randVec(lowerBound, upperBound), initialCovariance, initialWeight, _gmm.idCounter++));
+		*/
 }
 
-/**
+	/**
  * <summary> Update step of the GM PHD Filter. </summary>
  * <param name = "_sensor"> A reference to the sensor to read the measurements from. </sensor>
  */
@@ -60,12 +96,13 @@ void GMPHDFilter::update(gaussian_mixture& _gmm, Sensor & _sensor)
 			gaussian_component gct(_gmm[j]);
 			filter->update(gct, _sensor, i);
 
-			// GMPHD paper, formula 20, likelihood (???)
-			auto q = (1 / sqrt(pow(2 * M_PI, _sensor.getZDim()) * _sensor.getS().determinant())) * exp(-0.5 * _sensor.zMahalanobis(gct.m,i));
+			// Gaussian likelihood
+			auto q = (1.0 / sqrt(pow(2.0 * M_PI, _sensor.getZDim()) * _sensor.getS().determinant()))
+				* exp(-0.5 * MathHelpers::mahalanobis(_sensor.getZ(i), _sensor.getPredictedZ(), _sensor.getS()));
 			gct.w *= pD * q;
 			weightSum += gct.w;
 
-			if (gct.w > 1e-7) 
+			//if (gct.w > 1e-7) 
 				_gmm.addComponent(gct);
 		}
 

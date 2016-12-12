@@ -81,7 +81,7 @@ fadbad::F<double> zdotSEZtoRAZEL(const fadbad::F<double> _x, const fadbad::F<dou
 * <param name = "x"> A constant reference to initial state vector </param>
 * <param name = "dxdt"> A reference to the variable that should contain the derivative of the initial state vector with respect to time </param>
 */
-void integrateOrbit(const state_type &x, state_type &dxdt, const double /* t */)
+void integrateOrbit(const state_type &x, state_type &dxdt, const double /* t */, const VectorXd _noise)
 {
 	double r3 = pow(sqrt(x[0] * x[0] + x[1] * x[1] + x[2] * x[2]), 3.0);
 
@@ -90,9 +90,9 @@ void integrateOrbit(const state_type &x, state_type &dxdt, const double /* t */)
 	dxdt[0] = x[3];
 	dxdt[1] = x[4];
 	dxdt[2] = x[5];
-	dxdt[3] = -Astro::MU_E * x[0] / r3;
-	dxdt[4] = -Astro::MU_E * x[1] / r3;
-	dxdt[5] = -Astro::MU_E * x[2] / r3;
+	dxdt[3] = -Astro::MU_E * x[0] / r3 + _noise(0);
+	dxdt[4] = -Astro::MU_E * x[1] / r3 + _noise(1);
+	dxdt[5] = -Astro::MU_E * x[2] / r3 + _noise(2);
 }
 
 /*
@@ -100,7 +100,6 @@ void integrateOrbit(const state_type &x, state_type &dxdt, const double /* t */)
  */
 namespace Astro 
 {
-
 	/*
 	 * <summary> Output stream operator overload for the date struct. </summary>
 	 * <par> Output format depends on the specified enum. </par>
@@ -113,7 +112,6 @@ namespace Astro
 			break;
 		}
 		return _os;
-
 	}
 
 	/**
@@ -125,15 +123,10 @@ namespace Astro
 	*/
 	VectorXd razelToSEZ(const VectorXd& _razel) 
 	{
-		bool vtf = false;
 		VectorXd sez(_razel.size());
 
-		// Readability
-		double deg2rad = M_PI / 180.0,
-			az = _razel(1) * deg2rad, el = _razel(2) * deg2rad,
-			dAzRad = _razel(4) * deg2rad, dElRad = _razel(5) * deg2rad;
-		double sinAz = sin(az), cosAz = cos(az),
-			sinEl = sin(el), cosEl = cos(el);
+		double sinAz = sin(_razel(1)), cosAz = cos(_razel(1)),
+			sinEl = sin(_razel(2)), cosEl = cos(_razel(2));
 
 			// Slightly different from Vallado's book
 			sez(0) = _razel(0) * cosEl * cosAz;
@@ -142,9 +135,9 @@ namespace Astro
 
 			if (_razel.size() == 6)
 			{
-				sez(3) = _razel(3) * cosEl * cosAz - sez(2) * cosAz * dElRad - sez(1) * dAzRad;
-				sez(4) = _razel(3) * cosEl * sinAz - sez(2) * sinAz * dElRad + sez(0) * dAzRad;
-				sez(5) = _razel(3) * sinEl + _razel(0) * dElRad * cosEl;
+				sez(3) = _razel(3) * cosEl * cosAz - sez(2) * cosAz * _razel(5) - sez(1) * _razel(4);
+				sez(4) = _razel(3) * cosEl * sinAz - sez(2) * sinAz * _razel(5) + sez(0) * _razel(4);
+				sez(5) = _razel(3) * sinEl + _razel(0) * _razel(5) * cosEl;
 			}
 
 		return sez;
@@ -158,22 +151,21 @@ namespace Astro
 	*/
 	VectorXd sezToRAZEL(const VectorXd& _sez) 
 	{
-		bool vtf = false;
 		VectorXd razel(_sez.size());
 
-		double deg2rad = M_PI / 180.0, s2 = _sez(0) * _sez(0) + _sez(1) * _sez(1);
+		double s2 = _sez(0) * _sez(0) + _sez(1) * _sez(1);
 		double r2 = s2 + _sez(2) * _sez(2);
 		double s = sqrt(s2);
 
 		razel(0) = sqrt(r2);
-		razel(1) = atan2(_sez(1), _sez(0)) / deg2rad;
-		razel(2) = atan2(_sez(2), s) / deg2rad;
+		razel(1) = atan2(_sez(1), _sez(0));
+		razel(2) = atan2(_sez(2), s);
 
 		if (_sez.size() == 6)
 		{
 			razel(3) = (_sez(0) * _sez(3) + _sez(1) * _sez(4) + _sez(2) * _sez(5)) / razel(0);
-			razel(4) = (_sez(0) * _sez(4) - _sez(1) * _sez(3)) / s2 / deg2rad;
-			razel(5) = (_sez(5) * s2 - _sez(2) * (_sez(0) * _sez(3) + _sez(1) * _sez(4))) / (r2 * s) / deg2rad;
+			razel(4) = (_sez(0) * _sez(4) - _sez(1) * _sez(3)) / s2;
+			razel(5) = (_sez(5) * s2 - _sez(2) * (_sez(0) * _sez(3) + _sez(1) * _sez(4))) / (r2 * s);
 		}
 
 		return razel;
@@ -190,12 +182,8 @@ namespace Astro
 	{
 		VectorXd sez(_razel.size());
 
-		// Readability
-		double deg2rad = M_PI / 180.0,
-			az = _razel(1) * deg2rad, el = _razel(2) * deg2rad,
-			dAzRad = _razel(4) * deg2rad, dElRad = _razel(5) * deg2rad;
-		double sinAz = sin(az), cosAz = cos(az),
-			sinEl = sin(el), cosEl = cos(el);
+		double sinAz = sin(_razel(1)), cosAz = cos(_razel(1)),
+			sinEl = sin(_razel(2)), cosEl = cos(_razel(2));
 
 		sez(0) = -_razel(0) * cosEl * cosAz;		// Minus here
 		sez(1) = _razel(0) * cosEl * sinAz;
@@ -203,9 +191,9 @@ namespace Astro
 
 		if (_razel.size() == 6)
 		{
-			sez(3) = -_razel(3) * cosEl * cosAz + sez(2) * cosAz * dElRad + sez(1) * dAzRad;		// Minus here
-			sez(4) = _razel(3) * cosEl * sinAz - sez(2) * sinAz * dElRad + sez(0) * dAzRad;
-			sez(5) = _razel(3) * sinEl + _razel(0) * dElRad * cosEl;
+			sez(3) = -_razel(3) * cosEl * cosAz + sez(2) * cosAz *  _razel(5) + sez(1) * _razel(4);		// Minus here
+			sez(4) = _razel(3) * cosEl * sinAz - sez(2) * sinAz *  _razel(5) + sez(0) * _razel(4);
+			sez(5) = _razel(3) * sinEl + _razel(0) *  _razel(5) * cosEl;
 		}
 
 		return sez;
@@ -221,18 +209,18 @@ namespace Astro
 	{
 		VectorXd razel(_sez.size());
 
-		double deg2rad = M_PI / 180.0, s2 = _sez(0) * _sez(0) + _sez(1) * _sez(1);
+		double s2 = _sez(0) * _sez(0) + _sez(1) * _sez(1);
 		double r2 = s2 + _sez(2) * _sez(2);
 		double s = sqrt(s2);
 
 		razel(0) = sqrt(r2);
-		razel(1) = atan2(-_sez(1) / s, _sez(0) / s) / deg2rad;
-		razel(2) = asin(_sez(2) / razel(0)) / deg2rad;		// Asin here
+		razel(1) = atan2(-_sez(1) / s, _sez(0) / s);
+		razel(2) = asin(_sez(2) / razel(0));		// Asin here
 
 		if (_sez.size() == 6)
 		{
 			razel(3) = (_sez(0) * _sez(3) + _sez(1) * _sez(4) + _sez(2) * _sez(5)) / razel(0);
-			razel(4) = (_sez(1) * _sez(3) - _sez(0) * _sez(4)) / s2 / deg2rad;
+			razel(4) = (_sez(1) * _sez(3) - _sez(0) * _sez(4)) / s2;
 			razel(5) = (_sez(5) - razel(3) * sin(razel(2))) / s;
 		}
 
@@ -321,11 +309,9 @@ namespace Astro
 	*/
 	MatrixXd getSEZToTEMECovTfMat(const VectorXd & _geo, const double & _jd, const double & _xp, const double & _yp, const size_t & _dim)
 	{
-		double gmst = getGMST(_jd),
-			latRad = _geo(0) / 180.0 * M_PI,
-			lonRad = _geo(1) / 180.0 * M_PI;
+		double gmst = getGMST(_jd);
 
-		MatrixXd rotGd3 = rotZ(lonRad) * rotY(M_PI / 2.0 - latRad);
+		MatrixXd rotGd3 = rotZ(_geo(1)) * rotY(M_PI / 2.0 - _geo(0));
 		MatrixXd rotPM3 = getPolarMotionMatrix(_xp, _yp);
 		MatrixXd rotGMST3 = rotZ(gmst);
 
@@ -353,12 +339,11 @@ namespace Astro
 	{
 		VectorXd ecef(6);
 
-		double latRad = _geo(0) / 180.0 * M_PI, lonRad = _geo(1) / 180.0 * M_PI;	// Degrees to radians
-		double s = sin(latRad), c = cos(latRad);
+		double s = sin(_geo(0));
 		double N = R_EQ / sqrt(1.0 - E2 * pow(s, 2));			// Radius of curvature in prime meridian
-		double t = (N + _geo(2)) * c;
+		double t = (N + _geo(2)) * cos(_geo(0));
 
-		ecef << t * cos(lonRad), t * sin(lonRad), ((1 - E2) * N + _geo(2)) * s, 0, 0, 0;     // Zero velocity
+		ecef << t * cos(_geo(1)), t * sin(_geo(1)), ((1 - E2) * N + _geo(2)) * s, 0, 0, 0;     // Zero velocity
 
 		return ecef;
 	}
@@ -372,11 +357,7 @@ namespace Astro
 	VectorXd sezToECEF(const VectorXd & _sez, const VectorXd & _geo)
 	{
 		VectorXd site = geodeticToECEF(_geo), ecef(_sez.size());
-
-		double latRad = _geo(0) / 180.0 * M_PI;
-		double lonRad = _geo(1) / 180.0 * M_PI;
-
-		MatrixXd rot = rotZ(lonRad) * rotY(M_PI / 2.0 - latRad);
+		MatrixXd rot = rotZ(_geo(1)) * rotY(M_PI / 2.0 - _geo(0));
 
 		if (_sez.size() == 3) 
 		{
@@ -400,10 +381,7 @@ namespace Astro
 	 */
 	VectorXd ecefToSEZ(const VectorXd & _ecef, const VectorXd & _geo)
 	{
-		double latRad = _geo(0) / 180.0 * M_PI;
-		double lonRad = _geo(1) / 180.0 * M_PI;
-
-		MatrixXd rot = rotY(-(M_PI / 2.0 - latRad)) * rotZ(-lonRad);
+		MatrixXd rot = rotY(-(M_PI / 2.0 - _geo(0))) * rotZ(-_geo(1));
 		VectorXd sez;
 
 		if (_ecef.size() == 3) 
@@ -464,9 +442,12 @@ namespace Astro
 		VectorXd ecef(_teme.size());
 		Vector3d tempThetaSa;
 		MatrixXd pm = getPolarMotionMatrix(_xp, _yp).inverse();
-		MatrixXd rotGMST = rotZ(-gmst);
-		tempThetaSa << 0, 0, 7.29211514670698e-05 * (1.0 - _lod / 86400.0);
 
+		MatrixXd rotGMST(3, 3);
+		rotGMST = rotZ(-gmst);		// st from Vallado's code (Matlab) // WRONG???
+
+		tempThetaSa << 0, 0, 7.29211514670698e-05 * (1.0 - _lod / 86400.0);
+		 
 		if (_teme.size() == 3)
 			ecef = pm * rotGMST * _teme.head(3);
 
@@ -602,9 +583,9 @@ namespace Astro
 			year = year - 1;
 		}
 
-		int t = (int)floor(year / 100.0);		// Warning here
+		int t = (int)floor(year * 0.01);		// Warning here
 
-		B = 2 - t + floor(t / 4);
+		B = 2 - t + floor(t * 0.25);
 
 		C = (((_date.sec) / 60.0
 			+ (double)_date.minute) / 60.0
@@ -745,7 +726,7 @@ namespace Astro
 	* <param name = "_dt"> Desired timestep. </param>
 	* <returns> VectorXd with the predicted state. </returns>
 	*/
-	VectorXd integrationPrediction(const VectorXd& _state, const double& _dt) {
+	VectorXd integrationPrediction(const VectorXd& _state, const double& _dt, const VectorXd& _noise) {
 		
 		VectorXd result(6);
 
@@ -758,7 +739,8 @@ namespace Astro
 		x0[4] = _state(4);
 		x0[5] = _state(5);
 
-		boost::numeric::odeint::integrate(integrateOrbit, x0, 0.0, _dt, _dt / 100);
+		auto tmp = std::bind(&integrateOrbit, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, _noise);
+		boost::numeric::odeint::integrate(tmp, x0, 0.0, _dt, _dt / 100);
 
 		result << x0[0], x0[1], x0[2], x0[3], x0[4], x0[5];
 

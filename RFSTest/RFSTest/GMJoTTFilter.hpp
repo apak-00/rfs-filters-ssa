@@ -2,7 +2,8 @@
 #include <Eigen/Dense>
 #include "GMRFSFilter.h"
 #include "Sensor.h"
-#include "gmm.h"
+#include "MixtureModels.h"
+#include "MathHelpers.h"
 
 /*
 * <summary> Gaussian Mixture Joint Target Detection and Tracking Filter class. </summary>
@@ -10,9 +11,9 @@
 class GMJoTTFilter : public GMRFSFilter<gaussian_mixture>
 {
 protected:
-	double q;						// Probability of target existence
+	double q, qPred;				// Probability of target existence
 
-	size_t nBirthComponents;	// Number of birth components
+	size_t nBirthComponents;	    // Number of birth components
 	double birthIntensity;			// Birth intensity
 	double pS;						// Probability of target survival
 	double pB;						// Probabilirt of target birth
@@ -24,6 +25,7 @@ protected:
 
 public:
 	auto getQ() { return q; }
+	auto getQPred() { return qPred; }
 	auto getT() { return filter->getT(); }
 	
 	/**
@@ -32,7 +34,7 @@ public:
 	* <param name = "_kf"> An instance of the Kalman Filter for single target state propagation. </param>
 	* <param name = "_nBirthComponents"> Number of birth components for the Gaussian Mixture during the prediction step. </param>
 	* <param name = "_birthIntensity"> Intensity of the birth components. </param>
-	* <param name = "_pS"> Probability of target survival. </param>
+	* <param name = "_pm"> Probability of target survival. </param>
 	* <param name = "_iCov"> Initial target state uncertainty (covariance). </param>
 	* <param name = "_lBound"> Lower state bound for random state generation. </param>
 	* <param name = "_uBound"> Upper state bound for random state generation. </param>
@@ -40,8 +42,8 @@ public:
 	* <param name = "_pB"> Probability of target birth. </param>
 	*/
 	GMJoTTFilter(std::shared_ptr<KalmanFilter> _kf, const size_t& _nBirthComponents, const double & _birthIntensity,
-		const double & _pS, const MatrixXd & _iCov, const VectorXd & _lBound, const VectorXd & _uBound, const double & _q, const double& _pB) :
-		nBirthComponents(_nBirthComponents), birthIntensity(_birthIntensity), pS(_pS), initialCovariance(_iCov),
+		const double & _pm, const MatrixXd & _iCov, const VectorXd & _lBound, const VectorXd & _uBound, const double & _q, const double& _pB) :
+		nBirthComponents(_nBirthComponents), birthIntensity(_birthIntensity), pS(_pm), initialCovariance(_iCov),
 		lowerBound(_lBound), upperBound(_uBound), q(_q), pB(_pB) 
 	{
 		filter = _kf;
@@ -57,8 +59,9 @@ public:
 	void predict(gaussian_mixture & _gmm, Sensor& _sensor)
 	{
 		// Probability of target existence
-		double qPred = pB * (1 - q) + pS * q, range;
-		double initialWeight = (birthIntensity / nBirthComponents) * pB * (1 - q) / qPred;
+		double range, initialWeight;
+		qPred = pB * (1 - q) + pS * q;
+		initialWeight = (birthIntensity / nBirthComponents) * pB * (1 - q) / qPred;
 		std::vector<double> birthRanges;
 		VectorXd birth(_gmm.dim());
 
@@ -76,7 +79,9 @@ public:
 				birthRanges.push_back((double)(i + 2) * 200);
 
 			if (nBirthComponents == 1)
-				birthRanges[0] = 1000;
+			{
+				birthRanges[0] = 1000 + rand() % 500 - 250;
+			}
 
 			// Birth
 			for (size_t i = 0; (i < nBirthComponents) && (_gmm.size() < _gmm.nMax); i++)
@@ -92,10 +97,10 @@ public:
 					m << range, _sensor.getBearing(), 0, 0, 0;
 					birth = Astro::razelToTEME(m, _sensor.getPosition(), _sensor.getDateJD(), _sensor.getLOD(), _sensor.getXp(), _sensor.getYp());
 				}
+
 				_gmm.addComponent(gaussian_component(birth, initialCovariance, initialWeight, _gmm.idCounter++));
 			}
 		}
-
 	}
 
 	/**
@@ -106,8 +111,7 @@ public:
 	*/
 	void update(gaussian_mixture & _gmm, Sensor & _sensor)
 	{
-		double cz = 1.0 / 57903 * 21;
-		//double cz = 0.1;// 1.0 / 231609.0;			// Temporary fix for cz
+		double cz = 1.0 / 57903 * 200; // 200 UKF 42 EKF
 
 		auto pD = _sensor.getPD();
 		size_t n0 = _gmm.size();
@@ -123,13 +127,8 @@ public:
 				gaussian_component gct(_gmm[j]);
 				filter->update(gct, _sensor, i);
 				
-				//VectorXd razel = Astro::temeToRAZEL(gct.m, _sensor.getPosition(), _sensor.getDateJD(), _sensor.getLOD(), _sensor.getXp(), _sensor.getYp());
-
-				VectorXd sez = Astro::temeToSEZ(gct.m, _sensor.getPosition(), _sensor.getDateJD(), _sensor.getLOD(), _sensor.getXp(), _sensor.getYp());
-				
-				double mah = _sensor.zMahalanobis(sez, i);
-				//std::cout << _sensor.getS() << std::endl;
-				auto qk = (1.0 / sqrt(pow(2.0 * M_PI, _sensor.getZDim()) * _sensor.getS().determinant())) * exp(-0.5 * mah);
+				auto qk = (1.0 / sqrt(pow(2.0 * M_PI, _sensor.getZDim()) * _sensor.getS().determinant())) 
+					* exp(-0.5 * MathHelpers::mahalanobis(_sensor.getZ(i), _sensor.getPredictedZ(), _sensor.getS()));
 				gct.w *= qk / (_sensor.getLambda() * cz);
 
 				delta_k += gct.w;

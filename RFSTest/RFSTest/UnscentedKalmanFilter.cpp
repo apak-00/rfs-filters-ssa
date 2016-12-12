@@ -10,7 +10,7 @@ using namespace std;
 /*
  * <summary> An empty constructor of the UnscentedKalmanFilter class. </summary>
  */
-UnscentedKalmanFilter::UnscentedKalmanFilter() : KalmanFilter() {}
+UnscentedKalmanFilter::UnscentedKalmanFilter() : KalmanFilter(), sigmaSamplingW(0.5) {}
 
 /*
  * <summary> Default constructor of the UnscentedKalmanFilter class. </summary>
@@ -18,7 +18,10 @@ UnscentedKalmanFilter::UnscentedKalmanFilter() : KalmanFilter() {}
  * <param name = "_dt"> Timestep. Defaults to zero. </param>
  */
 UnscentedKalmanFilter::UnscentedKalmanFilter(const decltype(Q) _Q, const decltype(dt) _dt) : 
-	KalmanFilter(MatrixXd::Identity(_Q.rows(), _Q.cols()), _Q, _dt) {}
+	KalmanFilter(MatrixXd::Identity(_Q.rows(), _Q.cols()), _Q, _dt), sigmaSamplingW(0.5) {}
+
+UnscentedKalmanFilter::UnscentedKalmanFilter(const decltype(Q) _Q, const decltype(sigmaSamplingW) _sigmaSamplingW, const decltype(dt) _dt) :
+	KalmanFilter(MatrixXd::Identity(_Q.rows(), _Q.cols()), _Q, _dt), sigmaSamplingW(_sigmaSamplingW) {}
 
 /*
  * <summary> Prediction step of the UnscentedKalmanFilter. </summary>
@@ -26,47 +29,58 @@ UnscentedKalmanFilter::UnscentedKalmanFilter(const decltype(Q) _Q, const decltyp
  */ 
 void UnscentedKalmanFilter::predict(gaussian_component & _gc)
 {
-	vector<VectorXd> sigmaPoints, sigmaPointsPredicted;
-	vector<double> sigmaWeights;
+	std::vector<VectorXd> sigmaPoints, sigmaPointsPredicted;
+	std::vector<double> sigmaWeights;
 	icl::standard_unscented_sampler<6, double> sampler;
+	size_t stateSize = _gc.m.size(), noiseSize = 3;
 
-	size_t L = _gc.m.size() * 2;
-	VectorXd recM = VectorXd::Zero(_gc.m.size()), d(_gc.m.size());
-	MatrixXd recP = MatrixXd::Zero(_gc.P.rows(), _gc.P.cols());
+	VectorXd recM = VectorXd::Zero(stateSize), d(stateSize);
+	MatrixXd recP = MatrixXd::Zero(stateSize, stateSize);
 
-	double kappa = 0.0, alpha = 1e-3, beta = 0;
-	double lambda = alpha * alpha * (L + kappa) - L;
+	// Noise (acceleration)
+	MatrixXd noiseP = MatrixXd::Identity(noiseSize, noiseSize);
+	if (!noiseSize)
+		noiseP *= 1e-2;
+
+	// Augmentation
+	VectorXd augM = VectorXd::Zero(stateSize + noiseSize);
+	MatrixXd augP = MatrixXd::Zero(augM.size(), augM.size());
+	augM.head(stateSize) = _gc.m;
+	augP.block(0, 0, stateSize, stateSize) = _gc.P;
+
+	if (!noiseSize)
+		augP.block(stateSize, stateSize, noiseSize, noiseSize) = noiseP;
 
 	// Derive the sigma points
-	getSigmaPoints(_gc.m, _gc.P, 0.5, sigmaPoints, sigmaWeights);
-
+	getSigmaPoints(augM, augP, 0.5, sigmaPoints, sigmaWeights);
 	sigmaPointsPredicted.resize(sigmaPoints.size());
+	auto mean = sigmaPoints[0].head(stateSize);
 
 	// Propagate the points
 	for (size_t i = 0; i < sigmaPoints.size(); i++)
 	{
-		//sigmaPointsPredicted[i] = F * sigmaPoints[i].head(_gc.m.size());
-		sigmaPointsPredicted[i] = Astro::integrationPrediction(sigmaPoints[i], dt);
+		// First 6 values of the sigma point (mean)
+		mean = sigmaPoints[i].head(stateSize);
+		if (!noiseSize)
+			sigmaPointsPredicted[i] = Astro::integrationPrediction(mean, dt);
+		else
+			// Last 3 values of the sigma point -> acceleration noise
+			sigmaPointsPredicted[i] = Astro::integrationPrediction(mean, dt, sigmaPoints[i].tail(3));
 	}
-		
+
+	//sigmaWeights[0] += 1 - alpha * alpha + beta;
+
 	// Reconstruct the mean and covariance
 	// Mean
 	for (size_t i = 0; i < sigmaPoints.size(); i++)
 		recM += sigmaPointsPredicted[i] * sigmaWeights[i];
 
 	// Covariance
-	// First term for covariance
-
-	sigmaWeights[0] += 1 - alpha * alpha + beta;
-	
 	for (size_t i = 0; i < sigmaPoints.size(); i++)
 	{
 		d = sigmaPointsPredicted[i] - recM;
 		recP += d * d.transpose() * sigmaWeights[i];
 	}
-
-	//std::cout << "P1: " << _gc.m.transpose() << std::endl;
-	//std::cout << "P2: " << recM.transpose() << std::endl;
 
 	// Reassign the values
 	_gc.m = recM;
@@ -84,40 +98,49 @@ void UnscentedKalmanFilter::update(gaussian_component & _gc, Sensor& _sensor, co
 	vector<VectorXd> sigmaPoints, sigmaPointsProjected;
 	vector<double> sigmaWeights;
 	icl::standard_unscented_sampler<6, double> sampler;
+	size_t stateSize = _gc.m.size(), noiseSize = 3, zSize = _sensor.getZ(0).size();
 
-	size_t L = _gc.m.size() + _sensor.getZDim();
-	VectorXd recM = VectorXd::Zero(_gc.m.size()), dm(_gc.m.size()),				// Reconstructed mean and temporary difference vector
+	VectorXd recM = VectorXd::Zero(_gc.m.size()), dm(_gc.m.size()),			// Reconstructed mean and temporary difference vector
 		recZ = VectorXd::Zero(_sensor.getZDim()), dz(_sensor.getZDim());	// Reconstructed measuremnt and temporary difference vector
-		 
-	MatrixXd recPZZ = MatrixXd::Zero(_sensor.getZDim(), _sensor.getZDim()),
+	MatrixXd recPZZ = MatrixXd::Zero(_sensor.getZDim(), _sensor.getZDim()),	// S
 		recPXZ = MatrixXd::Zero(_gc.m.size(), _sensor.getZDim());
 
-	double kappa = 0.0, alpha = 1e-3, beta = 0;
+	MatrixXd R = _sensor.getR(), K;
+	VectorXd noise(3);
+	noise << 0.05, 1e-4, 1e-4;
+	MatrixXd noiseP = MatrixXd::Identity(noiseSize, noiseSize);
+	noiseP.diagonal() = noise;
 
-	MatrixXd R = _sensor.getR();
+	// Augmentation
+	VectorXd augM = VectorXd::Zero(stateSize + noiseSize);
+	MatrixXd augP = MatrixXd::Zero(augM.size(), augM.size());
+
+	augM.head(stateSize) = _gc.m;
+	augP.block(0, 0, stateSize, stateSize) = _gc.P;
+	augP.block(stateSize, stateSize, noiseSize, noiseSize) = noiseP;
 
 	// Get sigma points
-	getSigmaPoints(_gc.m, _gc.P, 0.5, sigmaPoints, sigmaWeights);
+	getSigmaPoints(augM, augP, sigmaSamplingW, sigmaPoints, sigmaWeights);
 
 	sigmaPointsProjected.resize(sigmaPoints.size());
 
 	// Project sigma points onto the measurement state
+	auto mean = sigmaPoints[0].head(stateSize);
 	for (size_t i = 0; i < sigmaPoints.size(); i++)
 	{
-		sigmaPointsProjected[i] = Astro::temeToRAZEL(sigmaPoints[i], _sensor.getPosition(), _sensor.getDateJD(), 
+		mean = sigmaPoints[i].head(stateSize);
+		sigmaPointsProjected[i] = Astro::temeToRAZEL(mean, _sensor.getPosition(), _sensor.getDateJD(), 
 			_sensor.getLOD(), _sensor.getXp(), _sensor.getYp());
+		sigmaPointsProjected[i].head(noiseSize) += sigmaPoints[i].tail(noiseSize);
 		recZ += sigmaPointsProjected[i].head(3) * sigmaWeights[i];
-		
-		//cout << sigmaPoints[i].transpose() << endl;
-		//cout << sigmaPointsProjected[i].transpose() << endl << endl;
 	}
 
 	//sigmaWeights[0] += 1 - alpha * alpha + beta;
 
 	for (size_t i = 0; i < sigmaPoints.size(); i++) 
 	{
-		dz = sigmaPointsProjected[i].head(3) - recZ;		// Projected - reconstructed measurement
-		dm = sigmaPoints[i].head(6) - _gc.m;				// Sigma points - mean
+		dz = sigmaPointsProjected[i].head(zSize) - recZ;		// Projected - reconstructed measurement
+		dm = sigmaPoints[i].head(stateSize) - _gc.m;				// Sigma points - mean
 
 		recPZZ += sigmaWeights[i] * dz * dz.transpose();
 		recPXZ += sigmaWeights[i] * dm * dz.transpose();
@@ -125,33 +148,21 @@ void UnscentedKalmanFilter::update(gaussian_component & _gc, Sensor& _sensor, co
 
 	// The S matrix
 	_sensor.setS(recPZZ);
+	// Temporary fix for the update measurement
+	// TODO:Change in the future
+	_sensor.setPredictedZ(recZ);
 
 	// Kalman Update
-	// TODO: Use solve
-	MatrixXd K = recPXZ * recPZZ.inverse();
+	K = recPZZ.transpose().llt().solve(recPXZ.transpose()).transpose();
 
-	VectorXd updM = _gc.m + K * (_sensor.z[_zNum] - recZ);
-	
-	//std::cout << "Z : " << recZ.transpose() << std::endl;
-	//std::cout << "U1: " << _gc.m.transpose() << std::endl;
-	//std::cout << "U2: " << updM.transpose() << std::endl;
-
-	//std::cout << "recPXZ : " << std::endl << recPXZ << endl;
-	//std::cout << "recPZZ : " << std::endl << recPZZ << endl;
-	//std::cout << "recPZZi : " << std::endl << recPZZ.inverse() << endl;
-	//std::cout << "mult : " << std::endl << recPZZ * recPZZ.inverse() << endl;
-	
-	//cout << "Before: "  << endl <<_gc.m.transpose() << endl;
-	//cout << _gc.P << endl;
+	VectorXd oldM = _gc.m;
+	MatrixXd oldP = _gc.P;
 
 	_gc.m += K * (_sensor.z[_zNum] - recZ);
 	_gc.P -= K * recPZZ * K.transpose();
-
-	//cout << "After: " << endl << _gc.m.transpose() << endl;
-	//cout << _gc.P << endl;
 }
 
-/*
+/* 
 * <summary> Get the sigma points and the corresponding weights for the specified state vector and its covariance matrix. </summary>
 * <param name = "_mean"> State vector. </mean>
 * <param name = "_cov"> State vector covariance </mean>

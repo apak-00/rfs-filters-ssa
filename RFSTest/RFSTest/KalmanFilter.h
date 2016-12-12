@@ -1,7 +1,7 @@
 #pragma once
 #include <Eigen/Dense>
 #include "Sensor.h"
-#include "gmm.h"
+#include "MixtureModels.h"
 #include "SingleTargetFilter.h"
 
 using namespace Eigen;
@@ -32,5 +32,6 @@ public:
 	static MatrixXd getCVQ(const size_t& _dim, const double& _dt);
 	static VectorXd getCVq(const size_t& _dim, const double& _dt);
 
+	bool debug = false;
 };
 

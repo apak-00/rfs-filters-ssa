@@ -83,6 +83,6 @@ namespace Astro {
 	Matrix3d rotZ(const double& _angle);
 
 	/* Other */
-	VectorXd integrationPrediction(const VectorXd& _state, const double& _dt);
+	VectorXd integrationPrediction(const VectorXd& _state, const double& _dt, const VectorXd& _noise = VectorXd::Zero(3));
 	MatrixXd getShepperdMatrix(const VectorXd& _m0, const double& _t, VectorXd& _m, const double& _mu);
 }

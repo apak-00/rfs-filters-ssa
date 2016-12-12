@@ -1,7 +1,7 @@
 #pragma once
 #include <Eigen/Dense>
 #include "Sensor.h"
-#include "gmm.h"
+#include "MixtureModels.h"
 
 /**
  * <summary> Template class for single-target filter. </summary>
