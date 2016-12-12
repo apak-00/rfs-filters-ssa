@@ -6,6 +6,8 @@
 *.txt
 *.csv
 
+*.db
+
 # VS .opendb
 *.opendb
 
