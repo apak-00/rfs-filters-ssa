@@ -23,6 +23,12 @@ protected:
 	VectorXd lowerBound;			// Lower birth bound
 	VectorXd upperBound;			// Upper birth bound
 
+	// Temporary, for random generation, added 27/12/2016
+	// Define the static variables
+	std::random_device rDev;
+	std::mt19937 generator;
+	std::uniform_real_distribution<double> randomBirthDistribution;
+
 public:
 	auto getQ() { return q; }
 	auto getQPred() { return qPred; }
@@ -47,6 +53,9 @@ public:
 		lowerBound(_lBound), upperBound(_uBound), q(_q), pB(_pB) 
 	{
 		filter = _kf;
+
+		generator = std::mt19937(rDev());
+		randomBirthDistribution = std::uniform_real_distribution<double>(500, 1500);
 	}
 
 	/**
@@ -80,7 +89,8 @@ public:
 
 			if (nBirthComponents == 1)
 			{
-				birthRanges[0] = 1000 + rand() % 500 - 250;
+				//birthRanges[0] = 1000 + rand() % 500 - 250;
+				birthRanges[0] = randomBirthDistribution(generator);
 			}
 
 			// Birth
@@ -111,7 +121,7 @@ public:
 	*/
 	void update(gaussian_mixture & _gmm, Sensor & _sensor)
 	{
-		double cz = 1.0 / 57903 * 200; // 200 UKF 42 EKF
+		double cz = 1.0 / 57903 * 100; // 200 UKF 42 EKF
 
 		auto pD = _sensor.getPD();
 		size_t n0 = _gmm.size();

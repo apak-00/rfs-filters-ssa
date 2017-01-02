@@ -85,6 +85,11 @@ void UnscentedKalmanFilter::predict(gaussian_component & _gc)
 	// Reassign the values
 	_gc.m = recM;
 	_gc.P = recP;
+
+	MatrixXd tempVarianceMatrix = MatrixXd::Identity(stateSize, stateSize) * 0.1;
+	//tempVarianceMatrix.diagonal() = tempVarianceVector;
+
+	_gc.P += tempVarianceMatrix;
 }
 
 /*

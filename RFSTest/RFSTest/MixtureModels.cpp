@@ -161,7 +161,7 @@ void gaussian_component::initTag(const int& _id) {
  */
 std::ostream & operator<<(std::ostream & _os, const gaussian_component & _gc)
 {
-	for (size_t i = 0, iSize = _gc.m.size(); i <= iSize; i++)
+	for (size_t i = 0, iSize = _gc.m.size(); i < iSize; i++)
 		_os << _gc.m(i) << ",";
 	
 	_os << _gc.w << "," << _gc.tag[1] << "," 
@@ -172,7 +172,7 @@ std::ostream & operator<<(std::ostream & _os, const gaussian_component & _gc)
 
 std::ostream & operator<<(std::ostream & _os, const beta_gaussian_component & _gc)
 {
-	for (size_t i = 0, iSize = _gc.m.size(); i <= iSize; i++)
+	for (size_t i = 0, iSize = _gc.m.size(); i < iSize; i++)
 		_os << _gc.m(i) << ",";
 
 	_os << _gc.w << "," << _gc.tag[1] << ","
@@ -410,6 +410,7 @@ particle_mixture particle_mixture::operator+(const particle_mixture& _pc) const
 	result.components.insert(std::end(components), std::begin(_pc.components), std::end(_pc.components));
 	return result;
 }
+
 // Define the static variables
 std::random_device particle_mixture::rDev;
 std::mt19937 particle_mixture::generator = std::mt19937(rDev());

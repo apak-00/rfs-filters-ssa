@@ -55,7 +55,8 @@ VectorXd observeTEMEToRAZEL(const VectorXd& _teme, const Sensor& _sensor)
 // Main
 int main(int arcg, char** argv) 
 {	
-	string filename_params = "config/config-ukf-tdm.yaml";
+
+	string filename_params = "config/config-ukf-sim.yaml";
 	parameters p = readParametersYAML(filename_params);
 	testFilter(p);
 	//testSingleTargetFilter(p);
@@ -313,12 +314,12 @@ void runFilter(MultiTargetFilter& _filter, Sensor& _sensor, Mixture& _mixture, p
 	// IO
 	TDMReader tdmReader;
 	bool tdm = false, sim = false;
-	YAML::Emitter result, resultSmoothing;
-	result << YAML::BeginSeq;
-	resultSmoothing << YAML::BeginSeq;
-	ofstream outputCSV("Results/result_gmjott.csv"),
-	outputYAML("Results/result_gmjott.yaml"),
-	outputYAMLSmoothing("Results/result_gmjott_smoothing.yaml");		// Output file 
+	//YAML::Emitter result, resultSmoothing;
+	//result << YAML::BeginSeq;
+	//resultSmoothing << YAML::BeginSeq;
+	ofstream outputCSV("Results/result_gmjott.csv");
+	//outputYAML("Results/result_gmjott.yaml"),
+	//outputYAMLSmoothing("Results/result_gmjott_smoothing.yaml");		// Output file 
 	ifstream input;
 
 #ifdef MY_DEBUG
@@ -368,8 +369,6 @@ void runFilter(MultiTargetFilter& _filter, Sensor& _sensor, Mixture& _mixture, p
 		if (tdm) {
 			info = tdmReader.readEntryEigen();
 
-			//cout << info.transpose() << endl;
-
 			if (!info.size())
 				break;
 		}
@@ -377,8 +376,6 @@ void runFilter(MultiTargetFilter& _filter, Sensor& _sensor, Mixture& _mixture, p
 		else
 		{
 			infoTemp = readNetCDFProcessedEntry(input);
-			//cout << infoTemp.size() << endl;
-			//cout << infoTemp.transpose() << endl;
 			
 			if (!infoTemp.size())
 				break;
@@ -411,7 +408,7 @@ void runFilter(MultiTargetFilter& _filter, Sensor& _sensor, Mixture& _mixture, p
 
 		_filter.setT(dateCurr - datePrev);
 		datePrev = dateCurr;
-		
+
 		measurements.clear();
 
 		// Check input type
@@ -530,20 +527,20 @@ void runFilter(MultiTargetFilter& _filter, Sensor& _sensor, Mixture& _mixture, p
 		
 		cout << endl;
 #ifdef MY_DEBUG
-		cout << endl;
+		//cout << endl; 
 #endif
 	}
 
 	//result << YAML::EndSeq;
 	//outputYAML << result.c_str();
 
-	resultSmoothing << YAML::EndSeq;
+	//resultSmoothing << YAML::EndSeq;
 	//outputYAMLSmoothing << resultSmoothing.c_str();
 
 	// Close the output files
 	outputCSV.close();
-	outputYAML.close();
-	outputYAMLSmoothing.close();
+	//outputYAML.close();
+	//outputYAMLSmoothing.close();
 }
 
 /**

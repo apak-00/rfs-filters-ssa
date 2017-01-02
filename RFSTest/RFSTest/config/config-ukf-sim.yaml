@@ -1,4 +1,4 @@
-filename:	D:/Development/Git/Workspace/Matlab/CAMRa RFS 2016/simulation/camra-sim.csv
+filename:	Data/camra-sim-varying.csv
 input_type:	csv_netcdf_cfar
 
 sensor_configuration:
@@ -30,7 +30,7 @@ filter_parameters_multiple_target:
   th_prune:			1e-8
   th_estimate:		0.5
   pb:				1e-5
-  ps:				1
+  ps:				0.999
   q_initial:		0.01
   birth_cov:		[3600, 3600, 3600, 10, 10, 10]
   beta_epsilon:		0.01

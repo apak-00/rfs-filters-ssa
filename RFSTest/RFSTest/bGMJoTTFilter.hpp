@@ -24,6 +24,12 @@ protected:
 
 	double epsilon;					// Epsilon for beta component update
 
+	// Temporary, for random generation, added 27/12/2016
+	// Define the static variables
+	std::random_device rDev;
+	std::mt19937 generator;
+	std::uniform_real_distribution<double> randomBirthDistribution;
+
 public:
 	auto getQ() { return q; }
 
@@ -46,6 +52,9 @@ public:
 		lowerBound(_lBound), upperBound(_uBound), q(_q), pB(_pB), epsilon(_epsilon) 
 	{
 		filter = _kf;
+
+		generator = std::mt19937(rDev());
+		randomBirthDistribution = std::uniform_real_distribution<double>(500, 1500);
 	}
 
 	/**
@@ -73,15 +82,17 @@ public:
 		for (size_t i = 0; i < nBirthComponents; i++)
 			birthRanges.push_back((double)(i + 2) * 200);
 
-		if (nBirthComponents == 1)
+		if (nBirthComponents == 1) {
 			birthRanges[0] = 1000 + rand() % 500 - 250;
+			//birthRanges[0] = 1000; // randomBirthDistribution(generator);
+		}
 
 		// Birth
 		for (size_t i = 0; (i < nBirthComponents); i++)
 		{
 			// Uniform birth test
 			range = birthRanges[i];
-			std::cout << " B: " << range << " '";
+			//std::cout << " B: " << range << " '";
 
 			if (_bgmm.dim() == 2)
 				birth << range, 0;
@@ -130,7 +141,7 @@ public:
 	*/
 	void update(beta_gaussian_mixture & _bgmm, Sensor & _sensor)
 	{
-		double cz = 1.0 / 57903 * 400;
+		double cz = 1.0 / 25015.77 * 4;
 
 		size_t n0 = _bgmm.size();
 		double delta_k = 0, pDWeightedSum = 0;
