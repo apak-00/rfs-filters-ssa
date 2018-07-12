@@ -407,7 +407,9 @@ particle_mixture particle_mixture::operator+(const particle_mixture& _pc) const
 {
 	// TODO: Optimize?
 	particle_mixture result(*this);
-	result.components.insert(std::end(components), std::begin(_pc.components), std::end(_pc.components));
+	// This thing crashes in Debug mode
+	// Retest:
+	result.components.insert(std::end(result.components), std::begin(_pc.components), std::end(_pc.components));
 	return result;
 }
 
@@ -437,11 +439,11 @@ void particle_mixture::resampleITS(const size_t& _size)
 	std::vector<double> cdf(components.size());		// Cumulative distribution function
 	std::vector<particle> resampled(_size);
 
-	if (weightSum() != 1)
-		normalizeWeights();
-
 	// Sort elements in the descending order
 	std::sort(components.begin(), components.end(), [](particle a, particle b) {return b.w < a.w; });
+
+	if (weightSum() != 1)
+		normalizeWeights();
 
 	// Calculate the CDF
 	cdf[0] = components[0].w;
@@ -454,14 +456,20 @@ void particle_mixture::resampleITS(const size_t& _size)
 		rIdx = itsd(generator);				// Generate a random number between 0 and 1
 											// TODO: Optimize
 											// Get the closest particle index from the cdf
-		auto closest = std::min_element(cdf.begin(), cdf.end(),
+		std::vector<double>::iterator closest = std::min_element(cdf.begin(), cdf.end(),
 			[rIdx](double x, double y) {return abs(x - rIdx) < abs(y - rIdx); });
-		resampled[i] = *closest;
+		auto idx = std::distance(cdf.begin(), closest);
+		resampled[i] = components[idx];
 	}
 
 	components = resampled;
+	normalizeWeights();
+
 }
 
+/**
+* <summary> Populates random range, azimuth and elevation given certain bounds. </summary>
+*/
 void particle_mixture::populateRandomRAZEL(const Sensor& _sensor, const VectorXd& _lBound, const VectorXd& _uBound)
 {
 	if (components.size() == 0)
@@ -477,6 +485,53 @@ void particle_mixture::populateRandomRAZEL(const Sensor& _sensor, const VectorXd
 	for (size_t i = 0; i < components.size(); i++)
 	{
 		randRAZEL << dr(generator), da(generator), de(generator), 0, 0, 0;
+		randTEME = Astro::razelToTEME(randRAZEL, _sensor.getPosition(), _sensor.getDateJD(),
+			_sensor.getLOD(), _sensor.getXp(), _sensor.getYp());
+
+		components[i].m = randTEME;
+		components[i].w = weight;
+	}
+}
+
+/**
+* <summary> (2) +/- around point instead of bounds. </summary>
+* <param name="_sensor"> Sensor to get measurements/groundtruth from. </param>
+* <param name="_pmBounds"> Plus/minus bounds for range, azimuth, elevation and rates. </param>
+* <param name="_gt"> This bool checks if the groundtruth should be used for measurement or not. 
+* The measurement-based not yet implemented. </param>
+*/
+void particle_mixture::populateRandomRAZEL2(const Sensor& _sensor, const VectorXd& _pmBounds, const bool& _gt)
+{
+	if (components.size() == 0)
+		return;
+
+	VectorXd posRAZEL(3), velRAZEL(3);
+
+	if (_gt) {
+		posRAZEL = _sensor.getGT();
+		velRAZEL = _sensor.getGTRate();
+	}
+	else {
+		// TODO: How to generate measurement-driven particles if only partial state is observed?
+		//pos = _sensor.getZ();
+		//vel = << 0, _sensor.getBearing().segment(0, 2);
+	}
+
+	VectorXd randRAZEL = VectorXd::Zero(6), randTEME = VectorXd::Zero(6);
+	double weight = 1.0 / components.size();
+
+	// Generate random for each varaible
+	std::uniform_real_distribution<double> dr(posRAZEL(0) - _pmBounds(0), posRAZEL(0) + _pmBounds(0));		// Distribution for Range
+	std::uniform_real_distribution<double> da(posRAZEL(1) - _pmBounds(1), posRAZEL(1) + _pmBounds(1));		// Distribution for Azimuth
+	std::uniform_real_distribution<double> de(posRAZEL(2) - _pmBounds(2), posRAZEL(2) + _pmBounds(2));		// Distribution for Elevation
+
+	std::uniform_real_distribution<double> ddr(velRAZEL(0) - _pmBounds(3), velRAZEL(0) + _pmBounds(3));		// Distribution for Range rate
+	std::uniform_real_distribution<double> dda(velRAZEL(1) - _pmBounds(4), velRAZEL(1) + _pmBounds(4));		// Distribution for Azimuth rate
+	std::uniform_real_distribution<double> dde(velRAZEL(2) - _pmBounds(5), velRAZEL(2) + _pmBounds(5));		// Distribution for Elevation rate
+
+	for (size_t i = 0; i < components.size(); i++)
+	{
+		randRAZEL << dr(generator), da(generator), de(generator), ddr(generator), dda(generator), dde(generator);
 		randTEME = Astro::razelToTEME(randRAZEL, _sensor.getPosition(), _sensor.getDateJD(),
 			_sensor.getLOD(), _sensor.getXp(), _sensor.getYp());
 

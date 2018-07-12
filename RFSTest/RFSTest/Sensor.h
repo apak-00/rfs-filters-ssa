@@ -41,6 +41,8 @@ protected:
 
 	VectorXd position;  // Sensor positionin WGS-84
 	VectorXd bearing;   // Sensor bearing and bearing rates
+	VectorXd gt;		// Groundtruth (if available). Added 2018/03/04
+	VectorXd gtRate;	// Groundtrouth instantaneous rate. Added 2018/03/04
 
 	Astro::date zDate;  // Measurement Date
 
@@ -86,6 +88,9 @@ public:
 	const auto getYp() const { return yp; }
 	const auto getLOD() const { return lod; }
 
+	const auto getGT() const { return gt; }		// Groundtruth (if available). Added 2018/03/04
+	const auto getGTRate() const { return gtRate;  }
+
 	// TODO: Remove in the future
 	const auto getPredictedZ() const { return predictedZ; }
  
@@ -108,6 +113,9 @@ public:
 	void setXp(const decltype (xp)& _xp) { xp = _xp; }
 	void setYp(const decltype (yp)& _yp) { yp = _yp; }
 	void setLOD(const decltype(lod)& _lod) { lod = _lod; }
+
+	void setGT(const decltype(gt)& _gt) { gt = _gt; }	// Groundtruth (if available). Added 2018/03/04
+	void setGTRate(const decltype(gtRate)& _gtRate) { gtRate = _gtRate; }
 
 	// TODO: Remove in the future
 	void setPredictedZ(const decltype(predictedZ)& _pz) { predictedZ = _pz; }

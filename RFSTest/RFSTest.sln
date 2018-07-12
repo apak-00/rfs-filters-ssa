@@ -1,9 +1,14 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 14
-VisualStudioVersion = 14.0.25123.0
+# Visual Studio 15
+VisualStudioVersion = 15.0.27428.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RFSTest", "RFSTest\RFSTest.vcxproj", "{39EC7227-1BC7-479E-8DE7-5CA192A6B572}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{6C6FE922-0266-41FD-BEA2-2C150D9AFB3E}"
+	ProjectSection(SolutionItems) = preProject
+		RFSTest\MixturesClassDiagram2.cd = RFSTest\MixturesClassDiagram2.cd
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -36,5 +41,8 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {5C1FE90A-E329-43F3-AF3F-D3D79463E731}
 	EndGlobalSection
 EndGlobal

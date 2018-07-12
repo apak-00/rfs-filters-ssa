@@ -22,7 +22,7 @@ Sensor::Sensor(const size_t& _zDim, const size_t& _sDim, const double& _pD, cons
 	zDim(_zDim), sDim(_sDim), pD(_pD), lambda(_lambda), V(_V), kappa(lambda * V / sqrt(pow(2 * M_PI, _zDim))),
 	z(), R(MatrixXd::Zero(_zDim, _zDim)), H(MatrixXd::Zero(_zDim, _sDim)), S(MatrixXd::Zero(_zDim, _zDim)),
 	position(VectorXd::Zero(3)), bearing(VectorXd::Zero(4)), t(0), signalStrength(0), signalStrengthThreshold(0), 
-	zDate() ,xp(0), yp(0), lod(0) {}
+	zDate() ,xp(0), yp(0), lod(0), gt(VectorXd::Zero(_zDim)), gtRate(VectorXd::Zero(_zDim)) {}
 
 /**
 * <summary> Constructor of the Sensor class (I). </summary>
@@ -45,15 +45,16 @@ Sensor::Sensor(const size_t& _zDim, const size_t& _sDim, const double& _pD, cons
 	zDim(_zDim), sDim(_sDim), pD(_pD), lambda(_lambda), V(_V), kappa(lambda * V / sqrt(pow(2 * M_PI, _zDim))),
 	z(), R(_R), H(_H), S(MatrixXd::Zero(_zDim, _zDim)), position(_position),
 	bearing(VectorXd::Zero(4)), t(0), signalStrength(0), signalStrengthThreshold(_sst), 
-	zDate(), xp(0), yp(0), lod(0) {}
+	zDate(), xp(0), yp(0), lod(0), gt(VectorXd::Zero(_zDim)), gtRate(VectorXd::Zero(_zDim)) {}
 
 /**
 * <summary> Copy constructor of the Sensor class. </summary>
 * <param name = "_s"> A constant reference to the instance of the Sensor class to copy from. </param>
 */
 Sensor::Sensor(const Sensor& _s) : zDim(_s.zDim), sDim(_s.sDim), pD(_s.pD), lambda(_s.lambda), V(_s.V),
-z(_s.z), R(_s.R), H(_s.H), S(_s.S), position(_s.position), bearing(_s.bearing), t(_s.t),
-signalStrength(_s.signalStrength), signalStrengthThreshold(_s.signalStrengthThreshold), zDate(_s.zDate), xp(_s.xp), yp(_s.yp), lod(_s.lod) {}
+	z(_s.z), R(_s.R), H(_s.H), S(_s.S), position(_s.position), bearing(_s.bearing), t(_s.t),
+	signalStrength(_s.signalStrength), signalStrengthThreshold(_s.signalStrengthThreshold), 
+	zDate(_s.zDate), xp(_s.xp), yp(_s.yp), lod(_s.lod), gt(_s.gt), gtRate(_s.gtRate) {}
 
 /**
 * <summary> Assignment operator overload. </summary>
@@ -79,6 +80,8 @@ Sensor& Sensor::operator = (const Sensor& _s)
 	xp = _s.xp;
 	yp = _s.yp;
 	lod = _s.lod;
+	gt = _s.gt;
+	gtRate = _s.gtRate;
 
 	return *this;
 }

@@ -63,6 +63,7 @@
     <None Include="config\config-ukf-sim.yaml" />
     <None Include="config\config-ukf-tdm.yaml" />
     <None Include="config\config.yaml" />
+    <None Include="MixturesClassDiagram2.cd" />
     <None Include="packages.config" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

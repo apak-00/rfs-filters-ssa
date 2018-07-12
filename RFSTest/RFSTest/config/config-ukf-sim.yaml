@@ -1,4 +1,4 @@
-filename:	Data/camra-sim-varying.csv
+filename:	Data/camra-sim-pd-05.csv
 input_type:	csv_netcdf_cfar
 
 sensor_configuration:

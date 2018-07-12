@@ -327,6 +327,7 @@ struct particle_mixture : mixture <particle>
 	double getEffectiveN();
 	void resampleITS(const size_t& _size);
 	void populateRandomRAZEL(const Sensor& _sensor, const VectorXd& _lBound, const VectorXd& _uBound);
+	void populateRandomRAZEL2(const Sensor& _sensor, const VectorXd& _pmBounds, const bool& _gt);
 
 	VectorXd getWeightedAverage();
 };

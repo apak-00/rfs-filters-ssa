@@ -110,9 +110,7 @@
     <ClCompile Include="BernoulliSmoother.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="MixtureModels.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
+    <ClCompile Include="MixtureModels.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
@@ -138,5 +136,6 @@
       <Filter>Resource Files</Filter>
     </None>
     <None Include="MixturesClassDiagram.cd" />
+    <None Include="MixturesClassDiagram2.cd" />
   </ItemGroup>
 </Project>

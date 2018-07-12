@@ -135,7 +135,7 @@ namespace Astro
 
 			if (_razel.size() == 6)
 			{
-				sez(3) = _razel(3) * cosEl * cosAz - sez(2) * cosAz * _razel(5) - sez(1) * _razel(4);
+				sez(3) = _razel(3) * cosEl * cosAz - sez(2) * cosAz * _razel(5) - sez(1) * _razel(4);                                                                                                                                                                                                                                                                                                                                                                                                                                                 
 				sez(4) = _razel(3) * cosEl * sinAz - sez(2) * sinAz * _razel(5) + sez(0) * _razel(4);
 				sez(5) = _razel(3) * sinEl + _razel(0) * _razel(5) * cosEl;
 			}
@@ -415,7 +415,7 @@ namespace Astro
 		MatrixXd pm = getPolarMotionMatrix(_xp, _yp), rotGMST = rotZ(gmst);
 
 		Vector3d omegaEarth,
-			posPEF = pm * _ecef.head(3); // Position in Pseudo Earth-Fixed Frame
+		posPEF = pm * _ecef.head(3); // Position in Pseudo Earth-Fixed Frame
 		omegaEarth << 0, 0, thetaSa;
 
 		if (_ecef.size() == 3)

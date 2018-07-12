@@ -41,3 +41,8 @@ filter_parameters_multiple_target:
 temp:
   clutter_mult_temp:	1
   ukf_sigma_sampler_w:	0.5
+  
+other:
+  polar_motion_x: 0
+  polar_motion_y: 0
+  length_of_day: 0

@@ -5,8 +5,8 @@
 # c20150126_1147_27386_TOD
 # c20150126_1341_24277_TOD
 
-filename:	Data/c20140228_1020_14819_TOD.tdm
-input_type:	tdm
+filename:	Data/camra-sim-pd-08.csv
+input_type:	csv_netcdf_cfar
 
 sensor_configuration:
   type:						radar
@@ -19,28 +19,36 @@ sensor_configuration:
   kappa:		1
   lambda:		1
   clutter:		1
-  R:			[0.005041, 0.05, 0.05]
+  R:			[2, 0.1, 0.1]
+
+filter_parameters_general:
+  noise_acceleration:	[1e-3, 1e-3, 1e-3]
+  noise_z_acc:			[0.05, 1e-4, 1e-4]
   
 filter_parameters_single_target:
   type:				ukf
   state_dim:		6
-  motion_model:		cv			
+  motion_model:		cv
   dt:				0.07
 
 filter_parameters_multiple_target:
-  type:				gmjott
+  type:				smcjott
   gm_max_size:		100
   birth_type:		uniform
-  birth_num:		1
+  birth_num:		10
   birth_intensity:	1
   th_merge:			0.8
   th_prune:			1e-8
-  th_estimate:		0.98
-  pb:				1e-5
-  ps:				0.999
-  q_initial:		0.01
+  th_estimate:		0.5
+  pb:				0.05
+  ps:				0.9
+  q_initial:		0.5
   birth_cov:		[3600, 3600, 3600, 10, 10, 10]
   beta_epsilon:		0.01
+  lower_birth_bound_range_razel:	750	
+  upper_birth_bound_range_razel:	1250
+  smc_max_size:		100
+  birth_sigma_range:	10
   
 temp:
   clutter_mult_temp:	1

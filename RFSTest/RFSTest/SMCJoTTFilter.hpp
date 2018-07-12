@@ -70,7 +70,7 @@ public:
 	void predict(particle_mixture& _pm, Sensor& _sensor)
 	{		
 		// Debug
-		std::cout << "w = " << _pm.components[0].w << " | "<< _pm.components[0].m.transpose() << std::endl;
+		//std::cout << "w = " << _pm.components[0].w << " | "<< _pm.components[0].m.transpose() << std::endl;
 
 		double t, wb;
 
@@ -92,31 +92,44 @@ public:
 		VectorXd tempBirth(6);
 
 		// If there are previous measurements, use their location to place birth components
-		if (!zPrev.size()) 
+		if (zPrev.size()) 
 		{
 			// Number of birth components for each measurement
-			size_t birthSizeZ = nBirthComponents * zPrev.size();
+			size_t birthSizeZ = zPrev.size();
 
 			// Number of mesurements @ previous timestep times number of particles to be born
-			b = particle_mixture(birthSizeZ, _sensor.getSDim(), wb);
+			b = particle_mixture(nBirthComponents * birthSizeZ, _sensor.getSDim(), wb);
+
+			VectorXd bounds(6);
+			bounds << 100, 0.1, 0.1, 0.1, 0.00001, 0.00001;
+			VectorXd posRAZEL(3), velRAZEL(3);
+			posRAZEL = _sensor.getGT();
+			velRAZEL = _sensor.getGTRate();
 
 			for (size_t i = 0; i < birthSizeZ; i++) 
 			{
 				// The particles are born within a normal distribution centered at the position of the previous measurement
 				// At the moment, only range uncertainty is taken into account
 				// TODO: Change the constant standard deviation
-				std::normal_distribution<double> distribution(0, 10);
+				//std::normal_distribution<double> distribution(0, 10);
+				//std::normal_distribution<double> distributionV(0, 10);
+				
+
+				std::uniform_real_distribution<double> dr(posRAZEL(0) - bounds(0), posRAZEL(0) + bounds(0));		// Distribution for Range
+				std::uniform_real_distribution<double> da(posRAZEL(1) - bounds(1), posRAZEL(1) + bounds(1));		// Distribution for Azimuth
+				std::uniform_real_distribution<double> de(posRAZEL(2) - bounds(2), posRAZEL(2) + bounds(2));		// Distribution for Elevation
+
+				std::uniform_real_distribution<double> ddr(velRAZEL(0) - bounds(3), velRAZEL(0) + bounds(3));		// Distribution for Range rate
+				std::uniform_real_distribution<double> dda(velRAZEL(1) - bounds(4), velRAZEL(1) + bounds(4));		// Distribution for Azimuth rate
+				std::uniform_real_distribution<double> dde(velRAZEL(2) - bounds(5), velRAZEL(2) + bounds(5));		// Distribution for Elevation rate
 
 				for (size_t j = 0; j < nBirthComponents; j++)
 				{
-					tempBirth << distribution(generator) + zPrev[i](0), zPrev[i](1), zPrev[i](2),  0, 0, 0;
+					tempBirth <<  dr(generator), da(generator), de(generator), ddr(generator), dda(generator), dde(generator);
 					b.components[i * nBirthComponents + j].m = Astro::razelToTEME(tempBirth, _sensor.getPosition(), _sensor.getDateJD(),
 						_sensor.getLOD(), _sensor.getXp(), _sensor.getYp());
 				}
 			}
-
-			// Concatenate predicted and birth components
-			_pm = _pm + b;
 		}
 		// If no measurements are received in the previous timestep, perform random birth
 		else
@@ -128,11 +141,19 @@ public:
 
 			for (size_t i = 0; i < nBirthComponents; i++)
 			{
-				tempBirth << distribution(generator) + zPrev[i](0), _sensor.getBearing(), 0, 0, 0;
+				auto bearing = _sensor.getBearing();
+				tempBirth << distribution(generator), bearing(0), bearing(1), 0, 0, 0;
 				b.components[i].m = Astro::razelToTEME(tempBirth, _sensor.getPosition(), _sensor.getDateJD(),
 					_sensor.getLOD(), _sensor.getXp(), _sensor.getYp());
 			}
 		}
+
+		// Concatenate predicted and birth components
+		//std::cout << _pm.size() << " + ";
+		//std::cout << b.size() << " = ";
+		_pm = _pm + b;
+		//std::cout << _pm.size() << std::endl;
+
 	}
 
 	/*
@@ -142,12 +163,17 @@ public:
 	 */
 	void update(particle_mixture& _pm, Sensor& _sensor)
 	{
-		std::cout << "w = " << _pm.components[0].w << " | " << _pm.components[0].m.transpose() << std::endl;
+		//// Debug before
+		//std::cout << "Pre-update weigths (" << _pm.size() << "): " << std::endl;
+		//for (size_t i = 0; i < 10; i++) {
+		//	std::cout << "U- w = " << _pm.components[i].w << " | " << _pm.components[i].m.transpose() << std::endl;
+		//}
 
-		double nThreshold = 200;
+		_pm.normalizeWeights();
+
 		double cz = 1.0 / 57903 * 200;
 		auto pD = _sensor.getPD();
-		double I1 = _pm.weightSum() * pD, I2, wSum = 0, delta_k = 0, g = 0;
+		double I2 = 0, wSum = 0, delta_k = 0, g = 0;
 		std::vector<double> ll(_pm.size(), 0);		// Likelihoods
 		size_t n = _pm.size();
 
@@ -164,33 +190,49 @@ public:
 		{
 			z = _sensor.getZ(i);
 			n = _pm.size();
-			I2 = 0;
 
 			// Loop for each particle ...
 			for (size_t j = 0; j < _pm.components.size(); j++)
 			{
-				g = MathHelpers::gaussianLikelihood(z, zPred[j], _sensor.getS());	// Compute likelihood
+				//g = MathHelpers::gaussianLikelihood(z, zPred[j], _sensor.getS());	// Compute likelihood
+				g = MathHelpers::gaussianLikelihood(z, zPred[j].head(3), _sensor.getR());
 				ll[j] += g;		// Likelihood sum
-				I2 += pD * g * _pm.components[j].w;		// Approximate I2 integral (85)
+				I2 += g * _pm.components[j].w;		// Approximate I2 integral (85)
 			}
-
-			delta_k += I2;
 		}
 
-		delta_k = I1 - delta_k / cz;		// delta_k approximation (86)
+		delta_k = pD * (1 - I2 / cz);		// delta_k approximation (86)
 		q = (1 - delta_k) / (1 - q * delta_k) * q;
 
 		// Update the weights (87)
 		for (size_t i = 0; i < _pm.components.size(); i++)
 			_pm.components[i].w = (1 - pD + pD * ll[i] / cz) * _pm.components[i].w;
+
+		std::sort(_pm.components.begin(), _pm.components.end(), [](particle a, particle b) {return b.w < a.w; });
+
+		// Truncate
+		if (_pm.size() >= _pm.nMax) {
+			std::vector<particle> truncated(_pm.components.begin(), _pm.components.begin() + _pm.nMax);
+			_pm.components = truncated;
+		}
 		
 		// Normalize the weights
 		_pm.normalizeWeights();
 		
 		// Sampling importance re-sampling
 		// If the effective number of particles is less than a threshold, resample:
-		if (_pm.getEffectiveN() < nThreshold)
-			_pm.resampleITS(1000);
+		auto effectiveNumberOfParticles = _pm.getEffectiveN();
+		if (effectiveNumberOfParticles < 50) //nThresold
+			if (_pm.size() <= _pm.nMax)
+				_pm.resampleITS(_pm.size());
+			else 
+				_pm.resampleITS(_pm.nMax);
+
+		//std::cout << "Post-update weigths (" << _pm.size() << "): " << std::endl;
+		//// Debug after
+		//for (size_t i = 0; i < 10; i++) {
+		//	std::cout << "U- w = " << _pm.components[i].w << " | " << _pm.components[i].m.transpose() << std::endl;
+		//}
 	}
 };
 
