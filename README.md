@@ -1,14 +1,16 @@
-# README #
+# Readme #
+Implementation of several Random Finite Sets (RFS) filters for processing radar (range, azimuth, elevation) measurements. Data is provided in tracking data message (.tdm) or Network Common Data Form (NetCDF, .nc, .cdf) format.
 
-As of 22.04.2016
+	[x] Gaussian Mixture Joint Target Detection and Track (Bernoulli) Filter (GM-JoTT)
+		[x] beta GM-JoTT Filter (+ probability of detection)
+		[ ] robust GM-JoTT Filter (+ clutter rate)
+	
+	[ ] Gaussian Mixture Probability Hypothesis Density (GM-PHD) Filter - not tested
+		[ ] Cardinalized GM-PHD (GM-CPHD) - not fully implemented
 
-* This repository contains the C++ code for Random-Finite Sets (RFS) application for Space Situational Awareness (SSA).
-  The code was initially written within the framework of the AFOSR project.
-* IDE used: MS Visual Studio 2015
+# Dependencies #
 
-# DEPENDENCIES #
-
-* Eigen (matrix operations)
-* Boost (numerical integration of the orbital state vector)
-* FADBAD (Jacobian calculation for the Extended Kalman Filter)
-* dirent.h (Conversion from .tdm to .csv)
+* Eigen 
+* Boost 
+* FADBAD 
+* dirent.h 
